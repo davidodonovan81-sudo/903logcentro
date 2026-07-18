@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fridge · 903LogCentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --white:#FFFFFF;
+    --gold:#C9A96A;
+    --ink:#3A4038;
+    --line:rgba(255,255,255,0.35);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    /* sage-to-gold brand gradient, as per the tile */
+    background:linear-gradient(160deg, #A99F6E 0%, #94A183 34%, #8CA08D 62%, #7E959C 100%);
+    background-attachment:fixed;
+    color:var(--white);
+    font-family:'Poppins',sans-serif;
+    font-weight:400;
+    line-height:1.6;
+    min-height:100vh;
+  }
+  .wrap{max-width:430px;margin:0 auto;padding:56px 28px 64px;}
+
+  /* header — tile style */
+  .eyebrow{
+    text-align:center;
+    font-size:12px;letter-spacing:6px;text-transform:uppercase;
+    font-weight:500;color:var(--white);
+    margin-bottom:20px;
+  }
+  h1{
+    font-family:'Syne',sans-serif;font-weight:800;
+    text-align:center;color:var(--white);
+    font-size:64px;line-height:0.95;letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  h1 .l2{display:block;font-size:40px;letter-spacing:2px;margin-top:6px;}
+  .rule{
+    width:120px;height:2px;background:var(--white);
+    margin:26px auto 22px;
+  }
+  .brandline{
+    text-align:center;
+    font-size:14px;letter-spacing:5px;text-transform:uppercase;
+    font-weight:600;color:var(--gold);
+  }
+  .subline{
+    text-align:center;
+    font-size:11px;letter-spacing:4px;text-transform:uppercase;
+    font-weight:400;color:var(--white);
+    margin-top:10px;
+  }
+
+  /* language toggle */
+  .lang{display:flex;justify-content:center;gap:10px;margin:34px 0 30px;}
+  .lang button{
+    font-family:'Poppins',sans-serif;font-size:10px;letter-spacing:3px;
+    text-transform:uppercase;font-weight:500;
+    background:none;border:1px solid var(--line);color:var(--white);
+    padding:8px 22px;border-radius:99px;cursor:pointer;opacity:0.6;
+    transition:all .25s ease;
+  }
+  .lang button.on{opacity:1;border-color:var(--white);background:rgba(255,255,255,0.14);}
+  .lang button:focus-visible{outline:2px solid var(--white);outline-offset:2px;}
+
+  /* intro note */
+  .note{
+    text-align:center;font-size:14px;font-weight:300;
+    color:var(--white);padding:0 4px;line-height:1.7;
+  }
+
+  /* menu */
+  .menu{margin-top:40px;}
+  .menu-title{
+    font-family:'Syne',sans-serif;font-weight:800;font-size:16px;
+    letter-spacing:4px;text-transform:uppercase;color:var(--white);
+    text-align:center;margin-bottom:6px;
+  }
+  .menu-rule{width:70px;height:2px;background:var(--white);margin:0 auto 20px;}
+  .item{
+    display:flex;align-items:baseline;gap:10px;
+    padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.22);
+  }
+  .item:last-child{border-bottom:none;}
+  .item .name{font-size:14.5px;font-weight:500;}
+  .item .name small{
+    display:block;font-size:11.5px;color:rgba(255,255,255,0.75);
+    font-weight:300;margin-top:1px;letter-spacing:0.3px;
+  }
+  .item .dots{
+    flex:1;border-bottom:1px dotted rgba(255,255,255,0.45);
+    transform:translateY(-4px);
+  }
+  .item .price{
+    font-family:'Syne',sans-serif;font-weight:800;font-size:15px;
+    color:var(--white);white-space:nowrap;
+  }
+  .item .price.free{
+    color:var(--gold);font-family:'Poppins',sans-serif;font-weight:600;
+    font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  }
+
+  /* pix */
+  .pix{
+    margin-top:46px;
+    border:2px solid var(--white);border-radius:20px;
+    padding:30px 24px;text-align:center;
+    background:rgba(255,255,255,0.10);
+  }
+  .pix h2{
+    font-family:'Syne',sans-serif;font-weight:800;font-size:26px;
+    letter-spacing:4px;text-transform:uppercase;color:var(--white);
+    margin-bottom:12px;
+  }
+  .pix p{font-size:13px;font-weight:300;color:var(--white);margin-bottom:18px;}
+  .pixkey{
+    font-weight:600;font-size:16px;letter-spacing:1px;
+    color:var(--white);margin-bottom:18px;word-break:break-all;
+  }
+  .copy{
+    font-family:'Syne',sans-serif;font-weight:800;font-size:13px;
+    letter-spacing:3px;text-transform:uppercase;
+    background:var(--white);color:var(--ink);
+    border:none;border-radius:99px;
+    padding:14px 36px;cursor:pointer;transition:transform .15s ease;
+  }
+  .copy:active{transform:scale(0.97);}
+  .copy:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
+
+  /* no pix */
+  .nopix{
+    margin-top:26px;text-align:center;
+    font-size:12.5px;font-weight:300;color:var(--white);
+    padding:0 8px;
+  }
+  .nopix strong{font-weight:600;}
+
+  /* footer — tile style sign-off */
+  .foot{margin-top:52px;text-align:center;}
+  .foot .rule2{width:120px;height:2px;background:var(--white);margin:0 auto 22px;}
+  .foot .sig{
+    font-size:11px;letter-spacing:4px;text-transform:uppercase;
+    font-weight:500;color:var(--white);
+  }
+  .foot .brand{
+    font-size:13px;letter-spacing:5px;text-transform:uppercase;
+    font-weight:600;color:var(--gold);margin-top:12px;
+  }
+  .foot .addr{
+    font-size:10px;letter-spacing:3px;text-transform:uppercase;
+    color:rgba(255,255,255,0.8);margin-top:10px;font-weight:300;
+  }
+
+  [data-pt]{display:none;}
+  html.pt [data-pt]{display:revert;}
+  html.pt [data-en]{display:none;}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow" data-en>Help Yourself</p>
+  <p class="eyebrow" data-pt>Sirva-se</p>
+
+  <h1 data-en>The<span class="l2">Fridge</span></h1>
+  <h1 data-pt>A<span class="l2">Geladeira</span></h1>
+
+  <div class="rule"></div>
+  <p class="brandline">903LOGCENTRO</p>
+  <p class="subline" data-en>Honesty Bar · Curitiba</p>
+  <p class="subline" data-pt>Frigobar de Confiança · Curitiba</p>
+
+  <div class="lang" role="group" aria-label="Language">
+    <button id="btn-en" class="on" onclick="setLang('en')">English</button>
+    <button id="btn-pt" onclick="setLang('pt')">Português</button>
+  </div>
+
+  <p class="note" data-en>Help yourself to anything you fancy and settle up whenever suits — no rush, we trust you completely.</p>
+  <p class="note" data-pt>Sirva-se do que quiser e acerte quando for melhor para você — sem pressa, confiamos totalmente em você.</p>
+
+  <div class="menu">
+    <p class="menu-title" data-en>What's Inside</p>
+    <p class="menu-title" data-pt>O Que Tem Dentro</p>
+    <div class="menu-rule"></div>
+
+    <div class="item">
+      <div class="name" data-en>Amstel<small>Cold lager, 350ml can</small></div>
+      <div class="name" data-pt>Amstel<small>Lata gelada, 350ml</small></div>
+      <div class="dots"></div><div class="price">R$10</div>
+    </div>
+
+    <div class="item">
+      <div class="name" data-en>Campo Largo red wine<small>Seco, 750ml — perfect for the balcony</small></div>
+      <div class="name" data-pt>Vinho tinto Campo Largo<small>Seco, 750ml — perfeito para a varanda</small></div>
+      <div class="dots"></div><div class="price">R$45</div>
+    </div>
+
+    <div class="item">
+      <div class="name" data-en>Campo Largo rosé<small>Seco, 750ml, chilled</small></div>
+      <div class="name" data-pt>Vinho rosé Campo Largo<small>Seco, 750ml, gelado</small></div>
+      <div class="dots"></div><div class="price">R$45</div>
+    </div>
+
+    <div class="item">
+      <div class="name" data-en>Orange juice<small>The Natural One, 100% juice, 1.3L</small></div>
+      <div class="name" data-pt>Suco de laranja<small>The Natural One, 100% suco, 1,3L</small></div>
+      <div class="dots"></div><div class="price">R$25</div>
+    </div>
+
+  </div>
+
+  <div class="pix">
+    <h2>PIX</h2>
+    <p data-en>Add up what you've had and send it over by PIX — it takes ten seconds.</p>
+    <p data-pt>Some o que consumiu e envie por PIX — leva dez segundos.</p>
+    <p class="pixkey" id="pixkey">58.584.490/0001-09</p>
+    <button class="copy" onclick="copyPix(this)" data-en>Copy PIX key</button>
+    <button class="copy" onclick="copyPix(this)" data-pt>Copiar chave PIX</button>
+  </div>
+
+  <p class="nopix" data-en><strong>No PIX?</strong> No problem at all — just send us a message on Airbnb and we'll sort it out for you.</p>
+  <p class="nopix" data-pt><strong>Sem PIX?</strong> Sem problema — é só nos mandar uma mensagem pelo Airbnb que resolvemos para você.</p>
+
+  <div class="foot">
+    <div class="rule2"></div>
+    <p class="sig" data-en>David · Marcelo · Scout</p>
+    <p class="sig" data-pt>David · Marcelo · Scout</p>
+    <p class="brand">903LOGCENTRO</p>
+    <p class="addr">Centro · Curitiba · Brasil</p>
+  </div>
+
+</div>
+<script>
+  function setLang(l){
+    document.documentElement.classList.toggle('pt', l==='pt');
+    document.getElementById('btn-en').classList.toggle('on', l==='en');
+    document.getElementById('btn-pt').classList.toggle('on', l==='pt');
+  }
+  function copyPix(btn){
+    var key='58584490000109';
+    navigator.clipboard.writeText(key).then(function(){
+      var old=btn.textContent;
+      btn.textContent=document.documentElement.classList.contains('pt')?'Copiado':'Copied';
+      setTimeout(function(){btn.textContent=old;},1600);
+    });
+  }
+</script>
+</body>
+</html>
