@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LogCentro Check-In</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap" rel="stylesheet">
 <style>
   :root{ --grad1:#8C9678; --grad2:#B8935A; --gold:#D9B96A; }
   *{box-sizing:border-box; margin:0; padding:0;}
@@ -24,23 +24,37 @@
   }
   .panel{ width:100%; max-width:520px; }
 
-  /* progress dots */
-  .progress{ display:flex; justify-content:center; gap:10px; margin-bottom:30px; }
-  .progress .dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.35); transition:all .3s; }
-  .progress .dot.active{ background:#fff; width:20px; border-radius:3px; }
-  .progress .dot.done{ background:var(--gold); }
+  .progress{ display:flex; justify-content:center; gap:14px; margin-bottom:26px; }
+  .progress .dot{
+    width:6px; height:6px; background:rgba(255,255,255,0.35);
+    transform:rotate(45deg); transition:all .3s;
+  }
+  .progress .dot.active{ background:var(--gold); width:8px; height:8px; box-shadow:0 0 10px rgba(217,185,106,0.7); }
+  .progress .dot.done{ background:rgba(255,255,255,0.75); }
 
   .kicker{
-    text-align:center; font-size:15px; font-weight:700; letter-spacing:3px;
-    text-transform:uppercase; color:#fff; opacity:1; margin-bottom:28px;
+    text-align:center; font-size:14px; font-weight:600; letter-spacing:3px;
+    text-transform:uppercase; color:#fff; opacity:1; margin-bottom:10px;
+  }
+  .kicker::after{
+    content:""; display:block; width:36px; height:1px;
+    background:var(--gold); margin:14px auto 24px; opacity:0.8;
   }
 
-  .step{ display:none; animation:fadeUp .45s ease; }
+  .step{
+    display:none; animation:fadeUp .55s cubic-bezier(.16,1,.3,1);
+    background:rgba(255,255,255,0.07);
+    backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:26px;
+    padding:38px 28px;
+    box-shadow:0 24px 60px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12);
+  }
   .step.active{ display:block; }
-  @keyframes fadeUp{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
 
-  .lead{ text-align:center; font-size:17px; font-weight:400; line-height:1.6; color:#fff; opacity:1; margin-bottom:6px; }
-  .lead .en{ display:block; font-size:15px; opacity:0.92; margin-top:8px; }
+  .lead{ text-align:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:22px; font-weight:500; line-height:1.5; color:#fff; opacity:1; margin-bottom:6px; }
+  .lead .en{ display:block; font-family:'Poppins',sans-serif; font-style:normal; font-size:14px; font-weight:400; opacity:0.85; margin-top:10px; }
 
   .dates{ display:flex; justify-content:center; margin:30px 0 40px; }
   .dates div{ text-align:center; }
@@ -48,8 +62,9 @@
   .dates .v{ font-size:24px; font-weight:600; letter-spacing:0.5px; }
 
   .section-head{
-    text-align:center; font-size:36px; font-weight:400; letter-spacing:0.5px;
-    text-transform:uppercase; line-height:1.1; margin-bottom:12px;
+    text-align:center; font-family:'Cormorant Garamond',serif; font-style:italic;
+    font-size:42px; font-weight:500; letter-spacing:0.3px;
+    line-height:1.1; margin-bottom:12px;
   }
   .section-sub{
     text-align:center; font-size:16px; font-weight:400; letter-spacing:0.2px;
@@ -64,21 +79,63 @@
   }
   label .en{ display:block; font-size:13px; font-weight:400; letter-spacing:0.3px; text-transform:none; opacity:0.85; margin-top:3px; }
 
-  input[type=text]{
+  input[type=text], input[type=time]{
     display:block; width:100%; background:transparent; border:none;
     border-bottom:2px solid rgba(255,255,255,0.7);
     text-align:center; color:#fff; font-family:'Poppins',sans-serif;
     font-size:19px; font-weight:500; padding:10px 4px 12px;
   }
   input[type=text]::placeholder{ color:rgba(255,255,255,0.6); }
-  input[type=text]:focus{ outline:none; border-bottom-color:#fff; }
+  input[type=text]:focus, input[type=time]:focus{ outline:none; border-bottom-color:#fff; }
+  input[type=time]::-webkit-calendar-picker-indicator{ filter:invert(1); opacity:0.85; }
+  input.input-error{ border-bottom-color:#FFB4A0; }
+
+  .date-field{ position:relative; }
+  .date-field-row{ display:flex; gap:16px; }
+  .date-field-row .date-field{ flex:1; }
+
+  .calendar-popup{
+    position:absolute; top:100%; left:0; right:0; margin-top:12px;
+    background:#FBFAF6; color:#2A2A22; border-radius:18px;
+    box-shadow:0 24px 56px rgba(0,0,0,0.35), 0 0 0 1px rgba(217,185,106,0.25);
+    padding:20px; z-index:60;
+    opacity:0; transform:translateY(-10px) scale(0.97); pointer-events:none;
+    transition:all .25s cubic-bezier(.16,1,.3,1);
+  }
+  .calendar-popup.open{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+  .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .cal-header button{
+    background:none; border:none; font-size:22px; cursor:pointer; color:#A67C3D;
+    padding:4px 12px; font-weight:700;
+  }
+  .cal-month-label{ font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:19px; text-transform:capitalize; }
+  .cal-weekdays{
+    display:grid; grid-template-columns:repeat(7,1fr); font-size:11px;
+    color:#8A8A80; text-align:center; margin-bottom:6px; font-weight:700;
+  }
+  .cal-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+  .cal-day{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    border-radius:9px; font-size:14px; cursor:pointer; background:none; border:none;
+    color:#2A2A22; font-family:'Poppins',sans-serif; font-weight:500;
+  }
+  .cal-day:hover{ background:#EFEEE4; }
+  .cal-day.selected{ background:var(--grad1); color:#fff; font-weight:700; }
+  .cal-day.today:not(.selected){ border:1.5px solid var(--grad2); }
+  .cal-day.muted{ visibility:hidden; }
+
+  .field-error{
+    display:none; font-size:14px; font-weight:500; color:#fff; text-align:center;
+    background:rgba(0,0,0,0.35); border-radius:8px; padding:12px; margin-top:12px; line-height:1.5;
+  }
+  .field-error.show{ display:block; }
 
   .upload{
-    display:block; border:2px dashed rgba(255,255,255,0.65); border-radius:12px;
+    display:block; border:1.5px dashed rgba(255,255,255,0.45); border-radius:14px;
     padding:26px 22px; text-align:center; cursor:pointer; position:relative;
-    background:rgba(255,255,255,0.08); transition:all .2s;
+    background:rgba(255,255,255,0.05); transition:all .25s;
   }
-  .upload.has-file{ border-color:#fff; border-style:solid; background:rgba(255,255,255,0.16); }
+  .upload.has-file{ border-color:var(--gold); border-style:solid; background:rgba(217,185,106,0.12); }
   .upload input{ position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
   .upload .icon{ font-size:28px; margin-bottom:10px; }
   .upload .txt{ font-size:16px; font-weight:500; letter-spacing:0.3px; opacity:1; pointer-events:none; }
@@ -97,9 +154,9 @@
   .rule{ width:64px; height:1px; background:rgba(255,255,255,0.6); margin:0 auto 30px; }
 
   .footer{ text-align:center; }
-  .footer .brand{ font-size:22px; font-weight:700; letter-spacing:5px; color:var(--gold); margin-bottom:16px; }
-  .footer .tag{ font-size:14px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; opacity:1; margin-bottom:10px; }
-  .footer .place{ font-size:13px; font-weight:500; letter-spacing:2px; text-transform:uppercase; opacity:0.85; }
+  .footer .brand{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:26px; font-weight:600; letter-spacing:2px; color:var(--gold); margin-bottom:14px; }
+  .footer .tag{ font-size:13px; font-weight:500; letter-spacing:1.5px; text-transform:uppercase; opacity:0.92; margin-bottom:8px; }
+  .footer .place{ font-size:12px; font-weight:400; letter-spacing:2.5px; text-transform:uppercase; opacity:0.75; }
 
   .consent{ margin:8px 0 6px; }
   .consent-label{ display:flex; align-items:flex-start; gap:14px; text-align:left; cursor:pointer; }
@@ -120,7 +177,11 @@
     font-size:16px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer;
     min-height:58px;
   }
-  button.btn-primary{ background:rgba(255,255,255,0.98); color:#4A4436; }
+  button.btn-primary{
+    background:linear-gradient(135deg, #fff 0%, #F3EFE4 100%);
+    color:#3E3A2E;
+    box-shadow:0 10px 28px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
   button.btn-primary:disabled{ opacity:0.5; cursor:default; }
   button.btn-back{ background:transparent; color:#fff; border:2px solid rgba(255,255,255,0.7); flex:0 0 120px; }
 
@@ -129,9 +190,13 @@
     background:rgba(0,0,0,0.35); border-radius:10px; padding:16px; margin-top:20px; line-height:1.5;
   }
 
-  .success{ display:none; text-align:center; padding-top:10px; animation:fadeUp .5s ease; }
-  .success .mark{ font-size:44px; color:var(--gold); margin-bottom:22px; }
-  .success .head{ font-size:36px; font-weight:400; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:20px; }
+  .success{ display:none; text-align:center; padding-top:14px; animation:fadeUp .6s cubic-bezier(.16,1,.3,1); }
+  .success .mark{
+    width:64px; height:64px; margin:0 auto 24px; border-radius:50%;
+    border:1.5px solid var(--gold); display:flex; align-items:center; justify-content:center;
+    font-size:26px; color:var(--gold); box-shadow:0 0 24px rgba(217,185,106,0.35);
+  }
+  .success .head{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:42px; font-weight:500; margin-bottom:20px; }
   .success p{ font-size:17px; font-weight:400; line-height:1.6; opacity:1; margin-bottom:8px; }
   .success p.en{ font-size:15px; opacity:0.88; margin-bottom:30px; }
 
@@ -177,17 +242,41 @@
 
   <div id="formArea">
 
-    <!-- STEP 0 — welcome / dates -->
+    <!-- STEP 0 — dates and times -->
     <div class="step" data-step="0">
       <div class="lead">
         Para agilizar seu check-in, precisamos apenas de alguns dados.
         <span class="en">To make your check-in smooth, we just need a few details.</span>
       </div>
-      <div class="dates">
-        <div><div class="l">Check-in</div><div class="v" id="dateIn">—</div></div>
+
+      <div class="date-field-row" style="margin-top:34px">
+        <div class="date-field">
+          <label>Check-in<span class="en">Check-in date</span></label>
+          <input type="text" id="checkinInput" class="date-input" placeholder="DD/MM/AAAA" autocomplete="off">
+          <div class="calendar-popup" id="checkinPopup"></div>
+        </div>
+        <div class="date-field">
+          <label>Chegada prevista (opcional)<span class="en">Expected arrival (optional)</span></label>
+          <input type="time" id="arrivalTimeInput">
+        </div>
       </div>
+      <div class="field-error" id="checkinError"></div>
+
+      <div class="date-field-row" style="margin-top:8px">
+        <div class="date-field">
+          <label>Check-out<span class="en">Check-out date</span></label>
+          <input type="text" id="checkoutInput" class="date-input" placeholder="DD/MM/AAAA" autocomplete="off">
+          <div class="calendar-popup" id="checkoutPopup"></div>
+        </div>
+        <div class="date-field">
+          <label>Saída prevista (opcional)<span class="en">Expected departure (optional)</span></label>
+          <input type="time" id="departureTimeInput">
+        </div>
+      </div>
+      <div class="field-error" id="checkoutError"></div>
+
       <div class="btn-row">
-        <button type="button" class="btn btn-primary" onclick="goToStep(1)">Continuar</button>
+        <button type="button" class="btn btn-primary" onclick="validateStep0()">Continuar</button>
       </div>
     </div>
 
@@ -412,7 +501,7 @@
 
 <script>
 /* ====== CONFIGURATION ====== */
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwPdwSugISFfgWBV3VZZrGPvvQfklsp4MCUHHvAVxp-jXQ-BHegKJccdy1l26PcqRY/exec";
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbx8MFRMGoynSeWhZ7KOtnihqsYfxmr440fiQzQkHiBUsMaQAZG8YqfHFXu3UdRtYsqkCA/exec";
 
 /* ====== PROPERTY THEMES ====== */
 const THEMES = {
@@ -422,8 +511,6 @@ const THEMES = {
 
 const params = new URLSearchParams(window.location.search);
 const apt = params.get("apt") === "1109" ? "1109" : "903";
-const checkin = params.get("in") || "";
-const checkout = params.get("out") || "";
 const theme = THEMES[apt];
 const aptDisplayName = theme.name.replace('LOGCENTRO','LogCentro');
 
@@ -433,13 +520,164 @@ document.getElementById('brandName').textContent = theme.name;
 document.getElementById('termsBody').innerHTML =
   document.getElementById('termsBody').innerHTML.split('{{APT}}').join(aptDisplayName);
 
-function fmtDate(iso){
-  if(!iso) return "—";
-  const [y,m,d] = iso.split("-");
-  if(!y||!m||!d) return iso;
-  return `${d}/${m}/${y}`;
+/* ====== DATE CALENDAR ENGINE ====== */
+const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const WEEKDAYS_PT = ["D","S","T","Q","Q","S","S"];
+const calendarStates = {};
+
+function pad2(n){ return n < 10 ? "0" + n : "" + n; }
+function formatDMY(date){ return pad2(date.getDate()) + "/" + pad2(date.getMonth()+1) + "/" + date.getFullYear(); }
+function toISO(date){ return date.getFullYear() + "-" + pad2(date.getMonth()+1) + "-" + pad2(date.getDate()); }
+function parseDMY(str){
+  const m = str.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m) return null;
+  const d = parseInt(m[1],10), mo = parseInt(m[2],10), y = parseInt(m[3],10);
+  if(mo < 1 || mo > 12) return null;
+  const date = new Date(y, mo-1, d);
+  if(date.getFullYear() !== y || date.getMonth() !== mo-1 || date.getDate() !== d) return null;
+  return date;
 }
-document.getElementById('dateIn').textContent = fmtDate(checkin);
+function fromISO(iso){
+  const parts = (iso || "").split("-");
+  if(parts.length !== 3) return null;
+  const date = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function initDateField(fieldId, prefillISO){
+  const input = document.getElementById(fieldId + 'Input');
+  calendarStates[fieldId] = { viewYear: new Date().getFullYear(), viewMonth: new Date().getMonth(), selected: null };
+
+  const prefilled = fromISO(prefillISO);
+  if(prefilled){
+    calendarStates[fieldId].selected = prefilled;
+    calendarStates[fieldId].viewYear = prefilled.getFullYear();
+    calendarStates[fieldId].viewMonth = prefilled.getMonth();
+    input.value = formatDMY(prefilled);
+  }
+
+  input.addEventListener('focus', () => openCalendar(fieldId));
+  input.addEventListener('click', () => openCalendar(fieldId));
+  input.addEventListener('input', () => clearFieldError(fieldId));
+  input.addEventListener('blur', () => { setTimeout(() => validateDateField(fieldId), 180); });
+
+  renderCalendar(fieldId);
+}
+
+function openCalendar(fieldId){
+  document.querySelectorAll('.calendar-popup.open').forEach(p => {
+    if(p.id !== fieldId + 'Popup') p.classList.remove('open');
+  });
+  document.getElementById(fieldId + 'Popup').classList.add('open');
+}
+function closeCalendar(fieldId){
+  document.getElementById(fieldId + 'Popup').classList.remove('open');
+}
+
+function renderCalendar(fieldId){
+  const state = calendarStates[fieldId];
+  const popup = document.getElementById(fieldId + 'Popup');
+  const firstOfMonth = new Date(state.viewYear, state.viewMonth, 1);
+  const startWeekday = firstOfMonth.getDay();
+  const daysInMonth = new Date(state.viewYear, state.viewMonth + 1, 0).getDate();
+  const today = new Date();
+
+  let daysHtml = '';
+  for(let i = 0; i < startWeekday; i++){ daysHtml += '<div class="cal-day muted"></div>'; }
+  for(let d = 1; d <= daysInMonth; d++){
+    const thisDate = new Date(state.viewYear, state.viewMonth, d);
+    const isSelected = state.selected && formatDMY(state.selected) === formatDMY(thisDate);
+    const isToday = formatDMY(today) === formatDMY(thisDate);
+    daysHtml += `<button type="button" class="cal-day${isSelected?' selected':''}${isToday?' today':''}" onclick="selectDay('${fieldId}',${state.viewYear},${state.viewMonth},${d})">${d}</button>`;
+  }
+
+  popup.innerHTML =
+    '<div class="cal-header">' +
+      `<button type="button" onclick="changeMonth('${fieldId}',-1)">‹</button>` +
+      `<div class="cal-month-label">${MONTHS_PT[state.viewMonth]} ${state.viewYear}</div>` +
+      `<button type="button" onclick="changeMonth('${fieldId}',1)">›</button>` +
+    '</div>' +
+    '<div class="cal-weekdays">' + WEEKDAYS_PT.map(w => `<div>${w}</div>`).join('') + '</div>' +
+    '<div class="cal-days">' + daysHtml + '</div>';
+}
+
+function changeMonth(fieldId, delta){
+  const state = calendarStates[fieldId];
+  state.viewMonth += delta;
+  if(state.viewMonth < 0){ state.viewMonth = 11; state.viewYear--; }
+  if(state.viewMonth > 11){ state.viewMonth = 0; state.viewYear++; }
+  renderCalendar(fieldId);
+}
+
+function selectDay(fieldId, year, month, day){
+  const date = new Date(year, month, day);
+  calendarStates[fieldId].selected = date;
+  document.getElementById(fieldId + 'Input').value = formatDMY(date);
+  clearFieldError(fieldId);
+  closeCalendar(fieldId);
+  renderCalendar(fieldId);
+}
+
+function validateDateField(fieldId){
+  const input = document.getElementById(fieldId + 'Input');
+  const val = input.value.trim();
+  if(!val){
+    showFieldError(fieldId, 'Por favor, preencha esta data.', 'Please fill in this date.');
+    return false;
+  }
+  const parsed = parseDMY(val);
+  if(!parsed){
+    showFieldError(fieldId,
+      'Data inválida. Use o formato DD/MM/AAAA — por exemplo, 21/07/2026.',
+      'Invalid date. Use the DD/MM/YYYY format — for example, 21/07/2026.');
+    return false;
+  }
+  calendarStates[fieldId].selected = parsed;
+  calendarStates[fieldId].viewYear = parsed.getFullYear();
+  calendarStates[fieldId].viewMonth = parsed.getMonth();
+  clearFieldError(fieldId);
+  renderCalendar(fieldId);
+  return true;
+}
+
+function showFieldError(fieldId, ptMsg, enMsg){
+  const el = document.getElementById(fieldId + 'Error');
+  el.innerHTML = ptMsg + '<span class="en">' + enMsg + '</span>';
+  el.classList.add('show');
+  document.getElementById(fieldId + 'Input').classList.add('input-error');
+}
+function clearFieldError(fieldId){
+  document.getElementById(fieldId + 'Error').classList.remove('show');
+  document.getElementById(fieldId + 'Input').classList.remove('input-error');
+}
+
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('.calendar-popup.open').forEach(popup => {
+    const fieldId = popup.id.replace('Popup','');
+    const input = document.getElementById(fieldId + 'Input');
+    if(!popup.contains(e.target) && e.target !== input){ popup.classList.remove('open'); }
+  });
+});
+
+function validateStep0(){
+  const okIn = validateDateField('checkin');
+  const okOut = validateDateField('checkout');
+  if(!okIn || !okOut) return;
+  const inDate = calendarStates['checkin'].selected;
+  const outDate = calendarStates['checkout'].selected;
+  if(outDate < inDate){
+    showFieldError('checkout',
+      'A data de check-out deve ser igual ou posterior à data de check-in.',
+      'Check-out date must be on or after the check-in date.');
+    return;
+  }
+  goToStep(1);
+}
+
+initDateField('checkin', params.get("in") || "");
+initDateField('checkout', params.get("out") || "");
+if(params.get("arrival")) document.getElementById('arrivalTimeInput').value = params.get("arrival");
+if(params.get("departure")) document.getElementById('departureTimeInput').value = params.get("departure");
 
 /* ====== STEP NAVIGATION ====== */
 let currentStep = 0;
@@ -580,8 +818,10 @@ async function submitForm(){
 
   const payload = {
     apartment: aptDisplayName,
-    checkin: checkin,
-    checkout: checkout,
+    checkin: toISO(calendarStates['checkin'].selected),
+    checkout: toISO(calendarStates['checkout'].selected),
+    arrivalTime: document.getElementById('arrivalTimeInput').value || "",
+    departureTime: document.getElementById('departureTimeInput').value || "",
     consentGiven: true,
     consentTimestamp: new Date().toISOString(),
     guest1: {
