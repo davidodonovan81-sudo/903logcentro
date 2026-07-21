@@ -1,277 +1,624 @@
-/**
- * LogCentro Check-In Automation
- * ------------------------------------------------------
- * Guest submits via checkin.html -> ID photo + details are
- * filed and logged -> David/Gio get notified -> they open a
- * REVIEW PAGE to check the photo against the typed details
- * -> only then do they copy or send the portaria message.
- *
- * The verification step is deliberately manual. Nothing is
- * sent to the portaria automatically.
- */
-
-// ---- CONFIG: fill these in ----
-const DRIVE_FOLDER_ID = "1mAFePCG2y1MZOtXOnzCjUKAyprbM5xer";
-const NTFY_TOPIC = "logcentro-checkin-dm7k2";
-const NTFY_TOKEN = "tk_yzdkpengdho9qfowq3iwsp85zmt0h";
-const PORTARIA_WHATSAPP_NUMBER = "5541997580358";
-// --------------------------------
-
-const SHEET_NAME = "CheckIns";
-const HEADERS = ["ReservationId","Timestamp","Verified","Apartment","Check-in","Check-out",
-  "Guest 1 Name","Guest 1 Doc","Guest 1 Photo ID","Guest 1 Photo URL",
-  "Guest 2 Name","Guest 2 Doc","Guest 2 Photo ID","Guest 2 Photo URL",
-  "Consent Given","Consent Timestamp"];
-
-function getSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
-}
-
-/* ============ GUEST SUBMISSION ============ */
-
-function doPost(e) {
-  try {
-    const data = JSON.parse(e.postData.contents);
-    const reservationId = Utilities.getUuid();
-    const timestamp = new Date();
-
-    const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    const folderName = `${data.apartment} - ${data.guest1.name} - ${data.checkin}`;
-    const resFolder = parentFolder.createFolder(folderName);
-
-    const g1 = saveImage(resFolder, data.guest1, "Guest1");
-    const g2 = data.guest2 ? saveImage(resFolder, data.guest2, "Guest2") : {fileId:"", url:""};
-
-    const sheet = getSheet();
-    if (sheet.getLastRow() === 0) sheet.appendRow(HEADERS);
-    sheet.appendRow([
-      reservationId, timestamp, "NO", data.apartment, data.checkin, data.checkout,
-      data.guest1.name, data.guest1.doc, g1.fileId, g1.url,
-      data.guest2 ? data.guest2.name : "", data.guest2 ? data.guest2.doc : "", g2.fileId, g2.url,
-      data.consentGiven ? "YES" : "NO", data.consentTimestamp || ""
-    ]);
-
-    notifyForReview(reservationId, data.apartment, data.guest1.name);
-
-    return ContentService.createTextOutput(JSON.stringify({status: "ok", id: reservationId}))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } catch (err) {
-    try { notifyError(err.toString()); } catch (e2) { /* swallow */ }
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogCentro Check-In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{ --grad1:#8C9678; --grad2:#B8935A; --gold:#D9B96A; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{ height:100%; }
+  body{
+    font-family:'Poppins',sans-serif;
+    background:linear-gradient(155deg, var(--grad1) 0%, var(--grad2) 55%, var(--grad1) 100%);
+    background-size:180% 180%;
+    animation:driftBg 22s ease-in-out infinite;
+    color:#fff; min-height:100vh;
+    display:flex; justify-content:center;
+    padding:44px 20px 40px;
   }
-}
-
-function saveImage(folder, guest, label) {
-  if (!guest.photoBase64) return {fileId:"", url:""};
-  const bytes = Utilities.base64Decode(guest.photoBase64);
-  const mimeType = guest.photoType || "image/jpeg";
-  const ext = mimeType === "application/pdf" ? "pdf" : "jpg";
-  const blob = Utilities.newBlob(bytes, mimeType, `${label}_${guest.name || "guest"}.${ext}`);
-  const file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return {fileId: file.getId(), url: file.getUrl()};
-}
-
-/* ============ NOTIFICATION (links to review page, NOT to WhatsApp) ============ */
-
-function notifyForReview(reservationId, apartment, guestName) {
-  const scriptUrl = ScriptApp.getService().getUrl();
-  const reviewLink = scriptUrl + "?id=" + encodeURIComponent(reservationId);
-  UrlFetchApp.fetch("https://ntfy.sh/" + NTFY_TOPIC, {
-    method: "post",
-    headers: {
-      "Title": "Check-in para revisar: " + apartment,
-      "Click": reviewLink,
-      "Priority": "high",
-      "Tags": "id,mag",
-      "Authorization": "Bearer " + NTFY_TOKEN
-    },
-    payload: guestName + " enviou os dados — toque para conferir o documento antes de enviar à portaria",
-    muteHttpExceptions: true
-  });
-}
-
-function notifyError(errText) {
-  UrlFetchApp.fetch("https://ntfy.sh/" + NTFY_TOPIC, {
-    method: "post",
-    headers: {
-      "Title": "Check-in form error",
-      "Priority": "high",
-      "Tags": "warning",
-      "Authorization": "Bearer " + NTFY_TOKEN
-    },
-    payload: "A check-in submission failed to process: " + errText,
-    muteHttpExceptions: true
-  });
-}
-
-/* ============ STANDALONE TEST — run this directly from the Apps Script editor ============
-   Select "testNtfy" from the function dropdown at the top, then click Run.
-   This bypasses the form entirely and only tests the ntfy notification channel. */
-function testNtfy() {
-  const response = UrlFetchApp.fetch("https://ntfy.sh/" + NTFY_TOPIC, {
-    method: "post",
-    headers: {
-      "Title": "Teste manual",
-      "Priority": "high",
-      "Tags": "white_check_mark",
-      "Authorization": "Bearer " + NTFY_TOKEN
-    },
-    payload: "Se você recebeu isso, o canal de notificação está funcionando.",
-    muteHttpExceptions: true
-  });
-  Logger.log("Status code: " + response.getResponseCode());
-  Logger.log("Response: " + response.getContentText());
-}
-
-/* ============ REVIEW PAGE ============ */
-
-function doGet(e) {
-  const id = e.parameter.id;
-  if (!id) {
-    return HtmlService.createHtmlOutput("<p style='font-family:sans-serif;padding:24px'>No reservation ID given.</p>");
+  @keyframes driftBg{
+    0%{ background-position:0% 0%; } 50%{ background-position:100% 60%; } 100%{ background-position:0% 0%; }
   }
-  const row = findRow(id);
-  if (!row) {
-    return HtmlService.createHtmlOutput("<p style='font-family:sans-serif;padding:24px'>Reservation not found — it may already be archived.</p>");
+  .panel{ width:100%; max-width:520px; }
+
+  /* progress dots */
+  .progress{ display:flex; justify-content:center; gap:10px; margin-bottom:30px; }
+  .progress .dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.35); transition:all .3s; }
+  .progress .dot.active{ background:#fff; width:20px; border-radius:3px; }
+  .progress .dot.done{ background:var(--gold); }
+
+  .kicker{
+    text-align:center; font-size:12px; font-weight:600; letter-spacing:5px;
+    text-transform:uppercase; color:#fff; opacity:0.92; margin-bottom:28px;
   }
 
-  const aptNumber = row["Apartment"].replace(/[^0-9]/g, "");
-  const message = buildPortariaMessage(aptNumber, row);
-  const g1Img = row["Guest 1 Photo ID"] ? `https://drive.google.com/thumbnail?id=${row["Guest 1 Photo ID"]}&sz=w1000` : "";
-  const g2Img = row["Guest 2 Photo ID"] ? `https://drive.google.com/thumbnail?id=${row["Guest 2 Photo ID"]}&sz=w1000` : "";
-  const waLink = "https://wa.me/" + PORTARIA_WHATSAPP_NUMBER + "?text=" + encodeURIComponent(message);
-  const verified = row["Verified"] === "YES";
+  .step{ display:none; animation:fadeUp .45s ease; }
+  .step.active{ display:block; }
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
 
-  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body{font-family:Poppins,Arial,sans-serif;background:#FBFAF6;margin:0;padding:20px;color:#181A15;}
-    h1{font-size:18px;margin-bottom:4px;}
-    .sub{color:#8A8A80;font-size:13px;margin-bottom:20px;}
-    .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 4px 16px rgba(0,0,0,0.06);}
-    .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#7C8B6E;margin-bottom:10px;}
-    .row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;}
-    .row span:first-child{color:#8A8A80;}
-    img{width:100%;border-radius:8px;margin-top:8px;display:block;}
-    textarea{width:100%;min-height:180px;border:1px solid #E4E2D8;border-radius:8px;padding:12px;font-family:Poppins,Arial,sans-serif;font-size:13px;box-sizing:border-box;}
-    button{width:100%;padding:14px;border:none;border-radius:8px;font-size:14px;font-weight:600;margin-top:10px;cursor:pointer;}
-    .copy{background:#181A15;color:#fff;}
-    .send{background:#25D366;color:#fff;text-decoration:none;display:block;text-align:center;box-sizing:border-box;}
-    .verify{background:#fff;border:1.5px solid #7C8B6E;color:#7C8B6E;}
-    .verify.on{background:#7C8B6E;color:#fff;}
-    .toast{position:fixed;bottom:20px;left:20px;right:20px;background:#181A15;color:#fff;padding:12px;border-radius:8px;text-align:center;font-size:13px;display:none;}
-  </style></head><body>
-    <h1>Conferência de check-in</h1>
-    <div class="sub">${row["Apartment"]} · Check-in ${row["Check-in"]}</div>
+  .lead{ text-align:center; font-size:13.5px; font-weight:300; line-height:1.7; color:#fff; opacity:0.9; margin-bottom:6px; }
+  .lead .en{ display:block; font-size:12px; opacity:0.75; margin-top:4px; }
 
-    <div class="card">
-      <h2>Hóspede 1</h2>
-      <div class="row"><span>Nome</span><span>${escapeHtml(row["Guest 1 Name"])}</span></div>
-      <div class="row"><span>CPF / Doc</span><span>${escapeHtml(row["Guest 1 Doc"])}</span></div>
-      ${g1Img ? `<img src="${g1Img}">` : "<div class='sub'>Sem foto</div>"}
+  .dates{ display:flex; justify-content:center; gap:40px; margin:26px 0 40px; }
+  .dates div{ text-align:center; }
+  .dates .l{ font-size:10px; letter-spacing:3px; text-transform:uppercase; opacity:0.7; margin-bottom:4px; }
+  .dates .v{ font-size:16px; font-weight:500; letter-spacing:0.5px; }
+
+  .section-head{
+    text-align:center; font-size:38px; font-weight:300; letter-spacing:1px;
+    text-transform:uppercase; line-height:1.05; margin-bottom:10px;
+  }
+  .section-sub{
+    text-align:center; font-size:13px; font-weight:400; letter-spacing:0.3px;
+    opacity:0.88; margin-bottom:30px; line-height:1.6;
+  }
+  .section-sub .en{ display:block; font-size:11.5px; opacity:0.7; margin-top:2px; }
+
+  .field{ margin-bottom:20px; }
+  label{
+    display:block; text-align:center; font-size:11px; font-weight:500;
+    letter-spacing:2px; text-transform:uppercase; opacity:0.85; margin-bottom:9px;
+  }
+  label .en{ display:block; font-size:10px; font-weight:300; letter-spacing:1px; text-transform:none; opacity:0.65; margin-top:2px; }
+
+  input[type=text]{
+    display:block; width:100%; background:transparent; border:none;
+    border-bottom:1px solid rgba(255,255,255,0.55);
+    text-align:center; color:#fff; font-family:'Poppins',sans-serif;
+    font-size:15px; font-weight:400; padding:8px 4px 10px;
+  }
+  input[type=text]::placeholder{ color:rgba(255,255,255,0.5); }
+  input[type=text]:focus{ outline:none; border-bottom-color:#fff; }
+
+  .upload{
+    display:block; border:1px dashed rgba(255,255,255,0.5); border-radius:10px;
+    padding:22px; text-align:center; cursor:pointer; position:relative;
+    background:rgba(255,255,255,0.06); transition:all .2s;
+  }
+  .upload.has-file{ border-color:#fff; border-style:solid; background:rgba(255,255,255,0.14); }
+  .upload input{ position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
+  .upload .icon{ font-size:20px; margin-bottom:6px; }
+  .upload .txt{ font-size:12px; letter-spacing:0.5px; opacity:0.9; pointer-events:none; }
+  .upload .txt .en{ display:block; font-size:10.5px; opacity:0.65; margin-top:3px; font-weight:300; pointer-events:none; }
+  .thumb{ margin-top:12px; max-height:130px; border-radius:8px; display:none; width:100%; object-fit:cover; }
+  .filename{ margin-top:10px; font-size:11.5px; opacity:0.9; display:none; word-break:break-all; }
+
+  .add-guest-wrap{ text-align:center; margin-top:6px; }
+  .add-guest{
+    font-size:11.5px; letter-spacing:1.5px; text-transform:uppercase;
+    color:#fff; opacity:0.85; cursor:pointer; user-select:none; padding-bottom:6px;
+    border-bottom:1px solid rgba(255,255,255,0.35); display:inline-block;
+  }
+  #guest2Fields{ display:none; margin-top:34px; }
+
+  .rule{ width:64px; height:1px; background:rgba(255,255,255,0.6); margin:0 auto 30px; }
+
+  .footer{ text-align:center; }
+  .footer .brand{ font-size:19px; font-weight:600; letter-spacing:7px; color:var(--gold); margin-bottom:16px; }
+  .footer .tag{ font-size:11.5px; font-weight:600; letter-spacing:2.5px; text-transform:uppercase; opacity:0.92; margin-bottom:10px; }
+  .footer .place{ font-size:11px; font-weight:400; letter-spacing:3px; text-transform:uppercase; opacity:0.65; }
+
+  .consent{ margin:8px 0 6px; }
+  .consent-label{ display:flex; align-items:flex-start; gap:12px; text-align:left; cursor:pointer; }
+  .consent-label input[type=checkbox]{ position:absolute; opacity:0; width:20px; height:20px; cursor:pointer; }
+  .consent-box{ flex:0 0 18px; width:18px; height:18px; margin-top:2px; border:1px solid rgba(255,255,255,0.7); border-radius:4px; position:relative; }
+  .consent-label input:checked + .consent-box{ background:#fff; }
+  .consent-label input:checked + .consent-box::after{
+    content:""; position:absolute; left:5px; top:2px; width:5px; height:9px;
+    border:solid var(--grad2); border-width:0 2px 2px 0; transform:rotate(45deg);
+  }
+  .consent-txt{ font-size:12px; font-weight:300; line-height:1.6; opacity:0.92; }
+  .consent-txt .en{ display:block; font-size:10.5px; opacity:0.7; margin-top:5px; }
+  .terms-link{ color:var(--gold); text-decoration:underline; cursor:pointer; font-weight:500; }
+
+  .btn-row{ display:flex; gap:12px; margin-top:34px; }
+  button.btn{
+    flex:1; padding:15px; border:none; border-radius:999px; font-family:'Poppins',sans-serif;
+    font-size:13px; font-weight:600; letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+  }
+  button.btn-primary{ background:rgba(255,255,255,0.95); color:#5A5340; }
+  button.btn-primary:disabled{ opacity:0.5; cursor:default; }
+  button.btn-back{ background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.5); flex:0 0 100px; }
+
+  .error-box{
+    display:none; text-align:center; font-size:12px; color:#fff;
+    background:rgba(0,0,0,0.22); border-radius:8px; padding:12px; margin-top:18px;
+  }
+
+  .success{ display:none; text-align:center; padding-top:10px; animation:fadeUp .5s ease; }
+  .success .mark{ font-size:38px; color:var(--gold); margin-bottom:20px; }
+  .success .head{ font-size:36px; font-weight:300; text-transform:uppercase; letter-spacing:1px; margin-bottom:18px; }
+  .success p{ font-size:13.5px; font-weight:300; line-height:1.7; opacity:0.92; margin-bottom:6px; }
+  .success p.en{ font-size:12px; opacity:0.72; margin-bottom:30px; }
+
+  /* terms modal */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(20,20,15,0.72);
+    z-index:100; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-card{
+    background:#FBFAF6; color:#2A2A22; border-radius:16px; max-width:560px; width:100%;
+    max-height:85vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  .modal-head{
+    padding:20px 22px; border-bottom:1px solid #E8E5D8; display:flex;
+    justify-content:space-between; align-items:center; flex:0 0 auto;
+  }
+  .modal-head h3{ font-family:'Poppins',sans-serif; font-size:15px; font-weight:600; letter-spacing:0.5px; }
+  .modal-close{ cursor:pointer; font-size:20px; line-height:1; color:#8A8A7C; background:none; border:none; }
+  .modal-body{ padding:20px 22px; overflow-y:auto; font-size:12.5px; line-height:1.65; }
+  .modal-body h4{ font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#7C8B6E; margin:20px 0 8px; }
+  .modal-body h4:first-child{ margin-top:0; }
+  .modal-body p{ margin-bottom:10px; opacity:0.88; }
+  .modal-body .divider{ height:1px; background:#E8E5D8; margin:22px 0; }
+  .modal-body .lang-label{ font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#B8935A; font-weight:600; margin-bottom:14px; }
+  .modal-foot{ padding:16px 22px; border-top:1px solid #E8E5D8; flex:0 0 auto; }
+  .modal-foot button{
+    width:100%; padding:13px; border:none; border-radius:999px; background:#2A2A22; color:#fff;
+    font-family:'Poppins',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:1.5px;
+    text-transform:uppercase; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div class="panel">
+
+  <div class="kicker" id="kicker">SUA CHEGADA · CUIDAMOS DE TUDO</div>
+  <div class="progress" id="progress">
+    <div class="dot" data-step="0"></div>
+    <div class="dot" data-step="1"></div>
+    <div class="dot" data-step="2"></div>
+  </div>
+
+  <div id="formArea">
+
+    <!-- STEP 0 — welcome / dates -->
+    <div class="step" data-step="0">
+      <div class="lead">
+        Para agilizar seu check-in, precisamos apenas de alguns dados.
+        <span class="en">To make your check-in smooth, we just need a few details.</span>
+      </div>
+      <div class="dates">
+        <div><div class="l">Check-in</div><div class="v" id="dateIn">—</div></div>
+        <div><div class="l">Check-out</div><div class="v" id="dateOut">—</div></div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" onclick="goToStep(1)">Continuar</button>
+      </div>
     </div>
 
-    ${row["Guest 2 Name"] ? `
-    <div class="card">
-      <h2>Hóspede 2</h2>
-      <div class="row"><span>Nome</span><span>${escapeHtml(row["Guest 2 Name"])}</span></div>
-      <div class="row"><span>CPF / Doc</span><span>${escapeHtml(row["Guest 2 Doc"])}</span></div>
-      ${g2Img ? `<img src="${g2Img}">` : "<div class='sub'>Sem foto</div>"}
-    </div>` : ""}
+    <!-- STEP 1 — guest details + document upload -->
+    <div class="step" data-step="1">
+      <div class="section-head">Hóspede 1</div>
+      <div class="section-sub">Dados e documento de identificação<span class="en">Your details and ID document</span></div>
 
-    <div class="card">
-      <h2>Concordância</h2>
-      <div class="row"><span>Termos aceitos</span><span>${row["Consent Given"] === "YES" ? "Sim ✓" : "Não"}</span></div>
+      <div class="field">
+        <label>Nome completo<span class="en">Full name</span></label>
+        <input type="text" id="g1name">
+      </div>
+      <div class="field">
+        <label>CPF ou número do documento<span class="en">CPF or ID / passport number</span></label>
+        <input type="text" id="g1doc">
+      </div>
+      <div class="field">
+        <label>Documento de identificação<span class="en">ID document</span></label>
+        <label class="upload" id="g1uploadBox" for="g1file">
+          <input type="file" id="g1file" accept="image/*,.pdf,application/pdf">
+          <div class="icon">📄</div>
+          <div class="txt">Toque para enviar foto ou PDF<span class="en">Tap to upload a photo or PDF</span></div>
+        </label>
+        <img class="thumb" id="g1thumb">
+        <div class="filename" id="g1filename"></div>
+      </div>
+
+      <div class="add-guest-wrap">
+        <span class="add-guest" id="addGuestToggle">Adicionar segundo hóspede</span>
+      </div>
+
+      <div id="guest2Fields">
+        <div class="rule"></div>
+        <div class="section-head">Hóspede 2</div>
+        <div class="section-sub">Dados e documento de identificação<span class="en">Your details and ID document</span></div>
+
+        <div class="field">
+          <label>Nome completo<span class="en">Full name</span></label>
+          <input type="text" id="g2name">
+        </div>
+        <div class="field">
+          <label>CPF ou número do documento<span class="en">CPF or ID / passport number</span></label>
+          <input type="text" id="g2doc">
+        </div>
+        <div class="field">
+          <label>Documento de identificação<span class="en">ID document</span></label>
+          <label class="upload" id="g2uploadBox" for="g2file">
+            <input type="file" id="g2file" accept="image/*,.pdf,application/pdf">
+            <div class="icon">📄</div>
+            <div class="txt">Toque para enviar foto ou PDF<span class="en">Tap to upload a photo or PDF</span></div>
+          </label>
+          <img class="thumb" id="g2thumb">
+          <div class="filename" id="g2filename"></div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox1"></div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-back" onclick="goToStep(0)">Voltar</button>
+        <button type="button" class="btn btn-primary" onclick="validateStep1()">Continuar</button>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Mensagem para a portaria</h2>
-      <textarea id="msg" readonly>${message}</textarea>
-      <button class="copy" onclick="copyMsg()">Copiar mensagem</button>
-      <a class="send" style="margin-top:10px" href="${waLink}">Abrir no WhatsApp</a>
-      <button id="verifyBtn" class="verify ${verified ? 'on' : ''}" onclick="toggleVerify()">
-        ${verified ? '✓ Documento conferido' : 'Marcar documento como conferido'}
-      </button>
+    <!-- STEP 2 — terms & consent -->
+    <div class="step" data-step="2">
+      <div class="section-head" style="font-size:32px">Quase lá</div>
+      <div class="section-sub">Só falta confirmar os termos da hospedagem<span class="en">Just confirm the rental terms to finish</span></div>
+
+      <div class="consent">
+        <label class="consent-label">
+          <input type="checkbox" id="consent">
+          <span class="consent-box"></span>
+          <span class="consent-txt">
+            Confirmo que as informações e o documento fornecidos são verdadeiros, e li e concordo com os
+            <span class="terms-link" onclick="openTerms()">Termos de Locação</span> da hospedagem.
+            <span class="en">I confirm the information and document provided are true, and I have read and agree to the <span class="terms-link" onclick="openTerms()">Rental Terms</span> of this stay.</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="error-box" id="errorBox2"></div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-back" onclick="goToStep(1)">Voltar</button>
+        <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()">Enviar</button>
+      </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+  </div>
 
-    <script>
-      function copyMsg(){
-        const ta = document.getElementById('msg');
-        ta.select(); document.execCommand('copy');
-        showToast('Mensagem copiada');
-      }
-      function toggleVerify(){
-        google.script.run.withSuccessHandler(function(v){
-          const btn = document.getElementById('verifyBtn');
-          if(v){ btn.classList.add('on'); btn.textContent = '✓ Documento conferido'; }
-          else { btn.classList.remove('on'); btn.textContent = 'Marcar documento como conferido'; }
-          showToast(v ? 'Marcado como conferido' : 'Marcação removida');
-        }).setVerified('${id}');
-      }
-      function showToast(t){
-        const el = document.getElementById('toast');
-        el.textContent = t; el.style.display = 'block';
-        setTimeout(()=>el.style.display='none', 2000);
-      }
-    </script>
-  </body></html>`;
+  <div class="success" id="successBlock">
+    <div class="mark">✓</div>
+    <div class="section-head" style="margin-bottom:20px">Tudo Pronto</div>
+    <p>Seus dados foram recebidos com sucesso.</p>
+    <p class="en">All set — your details have been received.</p>
+  </div>
 
-  return HtmlService.createHtmlOutput(html).setTitle("Conferência de check-in");
+  <div class="rule" style="margin-top:40px"></div>
+  <div class="footer">
+    <div class="brand" id="brandName">903LOGCENTRO</div>
+    <div class="tag">Basta uma mensagem — cuidamos de tudo</div>
+    <div class="place">Centro · Curitiba</div>
+  </div>
+
+</div>
+
+<!-- TERMS MODAL -->
+<div class="modal-overlay" id="termsModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Termos de Locação · Rental Terms</h3>
+      <button class="modal-close" onclick="closeTerms()">&times;</button>
+    </div>
+    <div class="modal-body" id="termsBody">
+      <div class="lang-label">Português</div>
+
+      <h4>1. Termos de Locação &amp; Pagamento</h4>
+      <p>O hóspede concorda em alugar o apartamento mobiliado no {{APT}} para as datas especificadas através da plataforma de reserva. O pagamento do valor total foi realizado antecipadamente. Quaisquer serviços adicionais ou taxas extras serão acertados separadamente.</p>
+      <p>O hóspede reconhece e concorda integralmente com os termos deste contrato de locação.</p>
+
+      <h4>2. Check-in &amp; Check-out</h4>
+      <p>📥 Check-in: A partir das 15h<br>📤 Check-out: Até as 11h</p>
+      <p>⏳ O check-out tardio sem aprovação prévia poderá resultar em cobranças adicionais. Nossa equipe de limpeza trabalha com horários ajustados, então precisamos que o espaço esteja liberado no horário combinado!</p>
+
+      <h4>3. Regras da Casa &amp; Responsabilidades</h4>
+      <p>No {{APT}}, gostamos de manter tudo relaxado, mas com respeito — como uma festa entre amigos, só que sem a bagunça. Aqui está o que esperamos para que sua estadia seja nota 10:</p>
+      <p>✅ Check-out até 11h – nossa equipe de limpeza é tipo pit stop da Fórmula 1. Precisamos deixar tudo impecável para os próximos hóspedes. Sem atrasos sem aprovação!<br>
+      🚭 Proibido fumar dentro do apartamento ou na varanda. Caso contrário, uma taxa de R$500 será aplicada para limpeza profunda.<br>
+      🐾 Pets não são permitidos (ainda!)<br>
+      🔇 Respeite os vizinhos – se houver reclamações de barulho após as 22h, podemos intervir.<br>
+      🗑️ Descarte o lixo corretamente, usando as áreas de descarte designadas.</p>
+      <p>O descumprimento dessas regras pode resultar em cobranças adicionais, encerramento imediato da estadia ou perda do depósito.</p>
+
+      <h4>4. Regra de Não Perturbação</h4>
+      <p>🚨 Sem festas barulhentas, fogos de artifício ou atividades ilegais. O {{APT}} está em uma área residencial. Se houver reclamações, o hóspede poderá ser solicitado a sair imediatamente e sem reembolso.</p>
+
+      <h4>5. Danos</h4>
+      <p>Caso ocorra algum dano, o hóspede concorda em cobrir os custos razoáveis de reparo ou substituição. Se algo quebrar, avise-nos — sem drama, sem julgamentos.</p>
+
+      <h4>6. Direitos do Proprietário &amp; Acesso à Propriedade</h4>
+      <p>O anfitrião reserva o direito de entrar no apartamento em caso de emergência ou para investigar problemas graves (ex.: vazamento de água, reclamação de barulho excessivo). Sempre tentaremos notificar o hóspede com antecedência.</p>
+
+      <h4>7. Manutenção &amp; Reparos</h4>
+      <p>Garantimos que tudo esteja funcionando perfeitamente antes da sua chegada. Se algo não estiver certo, nos avise o quanto antes. Não há reembolso para pequenos inconvenientes (ex.: Wi-Fi um pouco lento ou lâmpada piscando).</p>
+
+      <h4>8. Proibição de Sublocação</h4>
+      <p>O hóspede não pode sublocar ou transferir a reserva para outra pessoa sem aprovação prévia.</p>
+
+      <h4>9. Política de Cancelamento &amp; Reembolso</h4>
+      <p>Cancelamentos e reembolsos seguem as regras da plataforma onde a reserva foi feita. Qualquer alteração deve ser realizada diretamente pelo aplicativo.</p>
+
+      <h4>10. Estacionamento</h4>
+      <p>🚗 O apartamento não inclui vaga, mas temos parceria com o estacionamento TRI PARK, bem em frente ao prédio, com tarifa especial de R$40 por noite. Caso precise, avise-nos com antecedência para organizarmos.</p>
+
+      <h4>11. Áreas Comuns</h4>
+      <p>Embora a área de churrasco não esteja disponível para estadias de curto prazo, você pode aproveitar o espaço da academia, piscina, lounge na cobertura e demais áreas comuns sem custo extra. O uso está limitado a 2 hóspedes por apartamento.</p>
+
+      <h4>12. Cumprimento da Legislação Brasileira &amp; Resolução de Disputas</h4>
+      <p>Este contrato segue as leis de locação brasileiras, especificamente a Lei do Inquilinato (Lei nº 8.245/1991) para locações de curta duração. Quaisquer disputas serão resolvidas sob a jurisdição brasileira, na cidade de Curitiba.</p>
+      <p>📌 Ao confirmar esta locação, você reconhece que leu e concorda com estes termos.</p>
+
+      <h4>13. Conecte-se Conosco!</h4>
+      <p>📸 Nos siga no Instagram! → @903LogCentro<br>Compartilhamos bastidores, destaques de hóspedes e dicas sobre Curitiba.</p>
+      <p>✈️ Boa viagem e, como dizemos na Irlanda: "Slán Abhaile!" (Volte sempre!) 🇮🇪</p>
+
+      <div class="divider"></div>
+      <div class="lang-label">English</div>
+
+      <h4>1. Rental Terms &amp; Payment</h4>
+      <p>The guest agrees to rent the fully furnished apartment at {{APT}} for the specified dates via the booking platform. Payment for the total amount has been paid in advance. Any additional services or charges will be settled separately.</p>
+      <p>Guest acknowledges full agreement to the terms of this rental contract.</p>
+
+      <h4>2. Check-in &amp; Check-out</h4>
+      <p>📥 Check-in: From 3:00 PM<br>📤 Check-out: By 11:00 AM</p>
+      <p>⏳ Late check-out without prior approval may result in additional charges. Our cleaning team runs a tight ship, so we need the space cleared on time!</p>
+
+      <h4>3. House Rules &amp; Responsibilities</h4>
+      <p>At {{APT}}, we like to keep things laid-back but respectful. Here's how to be an A+ guest:</p>
+      <p>✅ Check-out is by 11:00 AM. No late checkout without approval.<br>
+      🚭 No smoking inside the apartment or balcony — a R$500 deep-clean fee applies otherwise.<br>
+      🐾 No pets allowed (yet!)<br>
+      🔇 Respect the neighbours — noise complaints after 10:00 PM may require us to step in.<br>
+      🗑️ Dispose of trash properly, using the designated disposal area.</p>
+      <p>Failure to follow these rules may result in additional charges, immediate termination of the stay, or loss of deposit.</p>
+
+      <h4>4. Non-Disturbance Clause</h4>
+      <p>🚨 No loud parties, fireworks, or illegal activities. {{APT}} is in a residential area. If the guest or their visitors violate this rule and receive a complaint, they may be required to leave immediately without refund.</p>
+
+      <h4>5. Damages</h4>
+      <p>If damage occurs, the guest agrees to cover reasonable repair or replacement costs. If something breaks, let us know — no drama, no judgment.</p>
+
+      <h4>6. Owner's Rights &amp; Property Access</h4>
+      <p>The host reserves the right to enter the apartment in case of emergency or to investigate a serious issue (e.g., water leak, major noise complaint). The host will always attempt to notify the guest beforehand.</p>
+
+      <h4>7. Maintenance &amp; Repairs</h4>
+      <p>We make sure everything is in top condition before your arrival. If something isn't working as it should, let us know ASAP. No refunds for minor inconveniences (e.g., a slow WiFi signal or a flickering light).</p>
+
+      <h4>8. No Subletting</h4>
+      <p>The guest may not sublet or transfer the reservation to another party without prior approval.</p>
+
+      <h4>9. Cancellation &amp; Refund Policy</h4>
+      <p>Cancellations and refunds follow the policy set by the booking platform where you booked. Any amendments must be made directly at the app booking page.</p>
+
+      <h4>10. Parking</h4>
+      <p>🚗 Parking is not included, but our friends at TRI PARK right opposite the property have a special rate of R$40 per night. Please let us know in advance to arrange it.</p>
+
+      <h4>11. Communal Spaces</h4>
+      <p>Whilst the BBQ area is currently unavailable for short-term guests, you are welcome to enjoy the gym, swimming pool, rooftop lounge, and other communal areas at no extra cost. Use is limited to 2 guests per property.</p>
+
+      <h4>12. Brazilian Law Compliance &amp; Dispute Resolution</h4>
+      <p>This agreement is governed by Brazilian rental laws, specifically Lei do Inquilinato (Law No. 8.245/1991) for short-term rentals. Any disputes shall be resolved under Brazilian jurisdiction in Curitiba.</p>
+      <p>📌 By confirming this rental, you acknowledge that you have read and agreed to these terms.</p>
+
+      <h4>13. Connect With Us!</h4>
+      <p>📸 Follow us on Instagram! → @903LogCentro<br>We share behind-the-scenes stories, guest highlights, and some Curitiba gems.</p>
+      <p>✈️ Safe travels, and as we say in Ireland, "Slán Abhaile!" (Safe journey home!) 🇮🇪</p>
+    </div>
+    <div class="modal-foot">
+      <button onclick="closeTerms()">Fechar / Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====== CONFIGURATION ====== */
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbx8MFRMGoynSeWhZ7KOtnihqsYfxmr440fiQzQkHiBUsMaQAZG8YqfHFXu3UdRtYsqkCA/exec";
+
+/* ====== PROPERTY THEMES ====== */
+const THEMES = {
+  "903": { name: "903LOGCENTRO", grad1: "#8C9678", grad2: "#B8935A" },
+  "1109": { name: "1109LOGCENTRO", grad1: "#B5502B", grad2: "#8C3A1E" }
+};
+
+const params = new URLSearchParams(window.location.search);
+const apt = params.get("apt") === "1109" ? "1109" : "903";
+const checkin = params.get("in") || "";
+const checkout = params.get("out") || "";
+const theme = THEMES[apt];
+const aptDisplayName = theme.name.replace('LOGCENTRO','LogCentro');
+
+document.documentElement.style.setProperty('--grad1', theme.grad1);
+document.documentElement.style.setProperty('--grad2', theme.grad2);
+document.getElementById('brandName').textContent = theme.name;
+document.getElementById('termsBody').innerHTML =
+  document.getElementById('termsBody').innerHTML.split('{{APT}}').join(aptDisplayName);
+
+function fmtDate(iso){
+  if(!iso) return "—";
+  const [y,m,d] = iso.split("-");
+  if(!y||!m||!d) return iso;
+  return `${d}/${m}/${y}`;
 }
+document.getElementById('dateIn').textContent = fmtDate(checkin);
+document.getElementById('dateOut').textContent = fmtDate(checkout);
 
-function findRow(reservationId) {
-  const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === reservationId) {
-      const obj = {};
-      headers.forEach((h, idx) => obj[h] = data[i][idx]);
-      obj["_rowIndex"] = i + 1;
-      return obj;
+/* ====== STEP NAVIGATION ====== */
+let currentStep = 0;
+function goToStep(n){
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.querySelector(`.step[data-step="${n}"]`).classList.add('active');
+  document.querySelectorAll('.progress .dot').forEach(d => {
+    const ds = parseInt(d.dataset.step);
+    d.classList.toggle('active', ds === n);
+    d.classList.toggle('done', ds < n);
+  });
+  currentStep = n;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+goToStep(0);
+
+/* ====== GUEST 2 TOGGLE ====== */
+document.getElementById('addGuestToggle').addEventListener('click', () => {
+  const block = document.getElementById('guest2Fields');
+  const showing = block.style.display === 'block';
+  block.style.display = showing ? 'none' : 'block';
+  document.getElementById('addGuestToggle').textContent = showing
+    ? 'Adicionar segundo hóspede' : 'Remover segundo hóspede';
+});
+
+/* ====== FILE HANDLING (images compressed via canvas, PDFs passed through) ====== */
+function handleFile(inputId, thumbId, filenameId, boxId){
+  const input = document.getElementById(inputId);
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if(!file) return;
+
+    const maxBytes = 10 * 1024 * 1024;
+    if(file.size > maxBytes){
+      alert('O arquivo é muito grande (máx. 10MB). / File is too large (max 10MB).');
+      input.value = '';
+      return;
+    }
+
+    document.getElementById(boxId).classList.add('has-file');
+    const thumb = document.getElementById(thumbId);
+    const filenameEl = document.getElementById(filenameId);
+
+    if(file.type === 'application/pdf'){
+      thumb.style.display = 'none';
+      filenameEl.textContent = '📎 ' + file.name;
+      filenameEl.style.display = 'block';
+      const reader = new FileReader();
+      reader.onload = e => { input.dataset.b64 = e.target.result.split(',')[1]; };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    filenameEl.style.display = 'none';
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 1000;
+        const scale = Math.min(1, maxW / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        input.dataset.b64 = dataUrl.split(',')[1];
+        thumb.src = dataUrl;
+        thumb.style.display = 'block';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+handleFile('g1file','g1thumb','g1filename','g1uploadBox');
+handleFile('g2file','g2thumb','g2filename','g2uploadBox');
+
+/* ====== STEP 1 VALIDATION ====== */
+function validateStep1(){
+  const errBox = document.getElementById('errorBox1');
+  errBox.style.display = 'none';
+
+  const g1name = document.getElementById('g1name').value.trim();
+  const g1doc = document.getElementById('g1doc').value.trim();
+  const g1file = document.getElementById('g1file');
+
+  if(!g1name || !g1doc){
+    errBox.textContent = 'Por favor, preencha nome e documento do hóspede 1. / Please fill in guest 1\'s name and document number.';
+    errBox.style.display = 'block';
+    return;
+  }
+  if(!g1file.dataset.b64){
+    errBox.textContent = 'É obrigatório enviar o documento de identificação do hóspede 1. / Uploading guest 1\'s ID document is required.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  const guest2Active = document.getElementById('guest2Fields').style.display === 'block';
+  if(guest2Active){
+    const g2name = document.getElementById('g2name').value.trim();
+    const g2doc = document.getElementById('g2doc').value.trim();
+    const g2file = document.getElementById('g2file');
+    if(!g2name || !g2doc){
+      errBox.textContent = 'Por favor, preencha nome e documento do hóspede 2. / Please fill in guest 2\'s name and document number.';
+      errBox.style.display = 'block';
+      return;
+    }
+    if(!g2file.dataset.b64){
+      errBox.textContent = 'É obrigatório enviar o documento de identificação do hóspede 2. / Uploading guest 2\'s ID document is required.';
+      errBox.style.display = 'block';
+      return;
     }
   }
-  return null;
+
+  goToStep(2);
 }
 
-function setVerified(reservationId) {
-  const sheet = getSheet();
-  const row = findRow(reservationId);
-  if (!row) return false;
-  const newVal = row["Verified"] === "YES" ? "NO" : "YES";
-  const verifiedCol = HEADERS.indexOf("Verified") + 1;
-  sheet.getRange(row["_rowIndex"], verifiedCol).setValue(newVal);
-  return newVal === "YES";
-}
+/* ====== TERMS MODAL ====== */
+function openTerms(){ document.getElementById('termsModal').classList.add('open'); }
+function closeTerms(){ document.getElementById('termsModal').classList.remove('open'); }
 
-function buildPortariaMessage(aptNumber, row) {
-  const aptLine = `${aptNumber} ${aptNumber} ${aptNumber} ${aptNumber}`;
-  let guestBlock = `👤 ${row["Guest 1 Name"]}\nCPF: ${row["Guest 1 Doc"]}`;
-  if (row["Guest 2 Name"]) {
-    guestBlock += `\n\n👤 ${row["Guest 2 Name"]}\nCPF: ${row["Guest 2 Doc"]}`;
+/* ====== SUBMIT ====== */
+async function submitForm(){
+  const errBox = document.getElementById('errorBox2');
+  const btn = document.getElementById('submitBtn');
+  errBox.style.display = 'none';
+
+  if(!document.getElementById('consent').checked){
+    errBox.textContent = 'Por favor, confirme a concordância com os termos para continuar. / Please confirm agreement to the terms to continue.';
+    errBox.style.display = 'block';
+    return;
   }
-  return `Olá amigos da Portaria;\n\n` +
-    `Informação de reserva do Airbnb do David apartamento:\n${aptLine}\n\n` +
-    `Check-In: ${formatDate(row["Check-in"])}\n` +
-    `Check-Out: ${formatDate(row["Check-out"])}\n\n` +
-    `Hóspede(s):\n${guestBlock}\n\n` +
-    `Até mais;\nDavid`;
-}
 
-function formatDate(iso) {
-  if (!iso) return "";
-  const parts = String(iso).split("-");
-  if (parts.length !== 3) return iso;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
+  const guest2Active = document.getElementById('guest2Fields').style.display === 'block';
+  const g1file = document.getElementById('g1file');
+  const g2file = document.getElementById('g2file');
 
-function escapeHtml(str) {
-  return String(str || "").replace(/[&<>"']/g, m => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[m]));
+  const payload = {
+    apartment: aptDisplayName,
+    checkin: checkin,
+    checkout: checkout,
+    consentGiven: true,
+    consentTimestamp: new Date().toISOString(),
+    guest1: {
+      name: document.getElementById('g1name').value.trim(),
+      doc: document.getElementById('g1doc').value.trim(),
+      photoBase64: g1file.dataset.b64,
+      photoType: g1file.files[0]?.type || 'image/jpeg'
+    },
+    guest2: guest2Active ? {
+      name: document.getElementById('g2name').value.trim(),
+      doc: document.getElementById('g2doc').value.trim(),
+      photoBase64: g2file.dataset.b64 || "",
+      photoType: g2file.files[0]?.type || 'image/jpeg'
+    } : null
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    await fetch(BACKEND_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    document.getElementById('formArea').style.display = 'none';
+    document.getElementById('progress').style.display = 'none';
+    document.getElementById('successBlock').style.display = 'block';
+  } catch (err) {
+    errBox.textContent = 'Houve um problema ao enviar. Tente novamente. / There was a problem sending this. Please try again.';
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Enviar';
+  }
 }
+</script>
+</body>
+</html>
