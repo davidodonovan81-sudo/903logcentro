@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogCentro Check-In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --grad1:#8C9678; --grad2:#B8935A;
+    --gold:#D9B96A;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{ height:100%; }
+  body{
+    font-family:'Poppins',sans-serif;
+    background:linear-gradient(155deg, var(--grad1) 0%, var(--grad2) 55%, var(--grad1) 100%);
+    color:#fff;
+    min-height:100vh;
+    display:flex; justify-content:center;
+    padding:56px 20px 40px;
+  }
+  .panel{ width:100%; max-width:520px; }
+
+  .kicker{
+    text-align:center; font-size:12px; font-weight:600; letter-spacing:5px;
+    text-transform:uppercase; color:#fff; opacity:0.92; margin-bottom:34px;
+  }
+
+  .lead{ text-align:center; font-size:13.5px; font-weight:300; line-height:1.7; color:#fff; opacity:0.9; margin-bottom:6px; }
+  .lead .en{ display:block; font-size:12px; opacity:0.75; margin-top:4px; }
+
+  .dates{
+    display:flex; justify-content:center; gap:40px; margin:26px 0 44px;
+  }
+  .dates div{ text-align:center; }
+  .dates .l{ font-size:10px; letter-spacing:3px; text-transform:uppercase; opacity:0.7; margin-bottom:4px; }
+  .dates .v{ font-size:16px; font-weight:500; letter-spacing:0.5px; }
+
+  .section{ margin-bottom:46px; }
+  .section-head{
+    text-align:center; font-size:44px; font-weight:300; letter-spacing:1px;
+    text-transform:uppercase; line-height:1.05; margin-bottom:10px;
+  }
+  .section-sub{
+    text-align:center; font-size:13px; font-weight:400; letter-spacing:0.3px;
+    opacity:0.88; margin-bottom:26px; line-height:1.6;
+  }
+  .section-sub .en{ display:block; font-size:11.5px; opacity:0.7; margin-top:2px; }
+
+  .field{ margin-bottom:20px; }
+  label{
+    display:block; text-align:center; font-size:11px; font-weight:500;
+    letter-spacing:2px; text-transform:uppercase; opacity:0.85; margin-bottom:9px;
+  }
+  label .en{ display:block; font-size:10px; font-weight:300; letter-spacing:1px; text-transform:none; opacity:0.65; margin-top:2px; }
+
+  input[type=text]{
+    display:block; width:100%; background:transparent; border:none;
+    border-bottom:1px solid rgba(255,255,255,0.55);
+    text-align:center; color:#fff; font-family:'Poppins',sans-serif;
+    font-size:15px; font-weight:400; padding:8px 4px 10px;
+  }
+  input[type=text]::placeholder{ color:rgba(255,255,255,0.5); }
+  input[type=text]:focus{ outline:none; border-bottom-color:#fff; }
+
+  .upload{
+    border:1px dashed rgba(255,255,255,0.5); border-radius:10px;
+    padding:20px; text-align:center; cursor:pointer; position:relative;
+    background:rgba(255,255,255,0.06);
+  }
+  .upload.has-file{ border-color:#fff; border-style:solid; background:rgba(255,255,255,0.12); }
+  .upload input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .upload .txt{ font-size:12px; letter-spacing:0.5px; opacity:0.9; }
+  .upload .txt .en{ display:block; font-size:10.5px; opacity:0.65; margin-top:3px; font-weight:300; }
+  .thumb{ margin-top:12px; max-height:130px; border-radius:8px; display:none; width:100%; object-fit:cover; }
+
+  .add-guest{
+    text-align:center; font-size:11.5px; letter-spacing:1.5px; text-transform:uppercase;
+    color:#fff; opacity:0.85; cursor:pointer; user-select:none; padding-bottom:6px;
+    border-bottom:1px solid rgba(255,255,255,0.35); display:inline-block;
+  }
+  .add-guest-wrap{ text-align:center; margin-top:4px; }
+  #guest2Section{ display:none; }
+
+  .rule{
+    width:64px; height:1px; background:rgba(255,255,255,0.6);
+    margin:0 auto 30px;
+  }
+
+  .footer{ text-align:center; }
+  .footer .brand{
+    font-size:19px; font-weight:600; letter-spacing:7px; color:var(--gold); margin-bottom:16px;
+  }
+  .footer .tag{
+    font-size:11.5px; font-weight:600; letter-spacing:2.5px; text-transform:uppercase; opacity:0.92; margin-bottom:10px;
+  }
+  .footer .place{
+    font-size:11px; font-weight:400; letter-spacing:3px; text-transform:uppercase; opacity:0.65;
+  }
+
+  .consent{ margin:8px 0 28px; }
+  .consent-label{
+    display:flex; align-items:flex-start; gap:12px; text-align:left; cursor:pointer;
+  }
+  .consent-label input[type=checkbox]{
+    position:absolute; opacity:0; width:20px; height:20px; cursor:pointer;
+  }
+  .consent-box{
+    flex:0 0 18px; width:18px; height:18px; margin-top:2px;
+    border:1px solid rgba(255,255,255,0.7); border-radius:4px; position:relative;
+  }
+  .consent-label input:checked + .consent-box{ background:#fff; }
+  .consent-label input:checked + .consent-box::after{
+    content:""; position:absolute; left:5px; top:2px; width:5px; height:9px;
+    border:solid var(--grad2); border-width:0 2px 2px 0; transform:rotate(45deg);
+  }
+  .consent-txt{ font-size:11.5px; font-weight:300; line-height:1.65; opacity:0.9; }
+  .consent-txt .en{ display:block; font-size:10.5px; opacity:0.7; margin-top:6px; }
+
+  button.submit{
+    display:block; width:100%; margin:8px 0 40px; padding:15px;
+    background:rgba(255,255,255,0.95); color:#5A5340;
+    border:none; border-radius:999px; font-family:'Poppins',sans-serif;
+    font-size:13px; font-weight:600; letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+  }
+  button.submit:disabled{ opacity:0.55; }
+
+  .error-box{
+    display:none; text-align:center; font-size:12px; color:#fff;
+    background:rgba(0,0,0,0.22); border-radius:8px; padding:12px; margin-bottom:20px;
+  }
+
+  .success{ display:none; text-align:center; padding-top:20px; }
+  .success .mark{ font-size:38px; color:var(--gold); margin-bottom:20px; }
+  .success .head{ font-size:36px; font-weight:300; text-transform:uppercase; letter-spacing:1px; margin-bottom:18px; }
+  .success p{ font-size:13.5px; font-weight:300; line-height:1.7; opacity:0.92; margin-bottom:6px; }
+  .success p.en{ font-size:12px; opacity:0.72; margin-bottom:30px; }
+</style>
+</head>
+<body>
+<div class="panel">
+
+  <div class="kicker" id="kicker">SUA CHEGADA · CUIDAMOS DE TUDO</div>
+
+  <div id="formArea">
+    <div class="lead">
+      Para agilizar seu check-in, precisamos apenas de alguns dados.
+      <span class="en">To make your check-in smooth, we just need a few details.</span>
+    </div>
+
+    <div class="dates">
+      <div><div class="l">Check-in</div><div class="v" id="dateIn">—</div></div>
+      <div><div class="l">Check-out</div><div class="v" id="dateOut">—</div></div>
+    </div>
+
+    <form id="checkinForm">
+      <div class="section">
+        <div class="section-head">Hóspede 1</div>
+        <div class="section-sub">Dados do documento de identificação<span class="en">Your ID document details</span></div>
+
+        <div class="field">
+          <label>Nome completo<span class="en">Full name</span></label>
+          <input type="text" id="g1name" required>
+        </div>
+        <div class="field">
+          <label>CPF ou número do documento<span class="en">CPF or ID / passport number</span></label>
+          <input type="text" id="g1doc" required>
+        </div>
+        <div class="field">
+          <label>Foto do documento<span class="en">Photo of ID document</span></label>
+          <div class="upload" id="g1uploadBox">
+            <input type="file" id="g1file" accept="image/*" capture="environment" required>
+            <div class="txt">Toque para enviar<span class="en">Tap to upload</span></div>
+          </div>
+          <img class="thumb" id="g1thumb">
+        </div>
+      </div>
+
+      <div class="add-guest-wrap">
+        <span class="add-guest" id="addGuestToggle">Adicionar segundo hóspede</span>
+      </div>
+
+      <div class="section" id="guest2Section">
+        <div class="rule" style="margin-top:40px"></div>
+        <div class="section-head">Hóspede 2</div>
+        <div class="section-sub">Dados do documento de identificação<span class="en">Your ID document details</span></div>
+
+        <div class="field">
+          <label>Nome completo<span class="en">Full name</span></label>
+          <input type="text" id="g2name">
+        </div>
+        <div class="field">
+          <label>CPF ou número do documento<span class="en">CPF or ID / passport number</span></label>
+          <input type="text" id="g2doc">
+        </div>
+        <div class="field">
+          <label>Foto do documento<span class="en">Photo of ID document</span></label>
+          <div class="upload" id="g2uploadBox">
+            <input type="file" id="g2file" accept="image/*" capture="environment">
+            <div class="txt">Toque para enviar<span class="en">Tap to upload</span></div>
+          </div>
+          <img class="thumb" id="g2thumb">
+        </div>
+      </div>
+
+      <div class="consent">
+        <label class="consent-label">
+          <input type="checkbox" id="consent" required>
+          <span class="consent-box"></span>
+          <span class="consent-txt">
+            Confirmo que as informações e o documento fornecidos são verdadeiros, e concordo com o uso dos meus dados exclusivamente para o registro obrigatório de acesso do condomínio. Também me comprometo a respeitar as normas do condomínio e as regras de hospedagem descritas no anúncio do Airbnb.
+            <span class="en">I confirm the information and document provided are true, and agree to my data being used solely for the building's mandatory access registration. I also agree to follow the condominium's rules and the house rules listed in the Airbnb listing.</span>
+          </span>
+        </label>
+      </div>
+
+      <div style="margin-top:8px">
+        <button type="submit" class="submit" id="submitBtn">Enviar</button>
+      </div>
+      <div class="error-box" id="errorBox"></div>
+    </form>
+  </div>
+
+  <div class="success" id="successBlock">
+    <div class="mark">✓</div>
+    <div class="section-head" style="margin-bottom:20px">Tudo Pronto</div>
+    <p>Seus dados foram recebidos com sucesso.</p>
+    <p class="en">All set — your details have been received.</p>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="footer">
+    <div class="brand" id="brandName">903LOGCENTRO</div>
+    <div class="tag">Basta uma mensagem — cuidamos de tudo</div>
+    <div class="place">Centro · Curitiba</div>
+  </div>
+
+</div>
+
+<script>
+/* ====== CONFIGURATION ====== */
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbx8MFRMGoynSeWhZ7KOtnihqsYfxmr440fiQzQkHiBUsMaQAZG8YqfHFXu3UdRtYsqkCA/exec";
+
+/* ====== PROPERTY THEMES ====== */
+const THEMES = {
+  "903": { name: "903LOGCENTRO", grad1: "#8C9678", grad2: "#B8935A" },
+  "1109": { name: "1109LOGCENTRO", grad1: "#B5502B", grad2: "#8C3A1E" }
+};
+
+const params = new URLSearchParams(window.location.search);
+const apt = params.get("apt") === "1109" ? "1109" : "903";
+const checkin = params.get("in") || "";
+const checkout = params.get("out") || "";
+const theme = THEMES[apt];
+
+document.documentElement.style.setProperty('--grad1', theme.grad1);
+document.documentElement.style.setProperty('--grad2', theme.grad2);
+document.getElementById('brandName').textContent = theme.name;
+
+function fmtDate(iso){
+  if(!iso) return "—";
+  const [y,m,d] = iso.split("-");
+  if(!y||!m||!d) return iso;
+  return `${d}/${m}/${y}`;
+}
+document.getElementById('dateIn').textContent = fmtDate(checkin);
+document.getElementById('dateOut').textContent = fmtDate(checkout);
+
+/* ====== GUEST 2 TOGGLE ====== */
+document.getElementById('addGuestToggle').addEventListener('click', () => {
+  const block = document.getElementById('guest2Section');
+  const showing = block.style.display === 'block';
+  block.style.display = showing ? 'none' : 'block';
+  document.getElementById('addGuestToggle').textContent = showing
+    ? 'Adicionar segundo hóspede'
+    : 'Remover segundo hóspede';
+
+  const g2name = document.getElementById('g2name');
+  const g2doc = document.getElementById('g2doc');
+  const g2file = document.getElementById('g2file');
+  if (showing) {
+    g2name.required = false;
+    g2doc.required = false;
+    g2file.required = false;
+  } else {
+    g2name.required = true;
+    g2doc.required = true;
+    g2file.required = true;
+  }
+});
+
+/* ====== IMAGE PREVIEW + COMPRESSION ====== */
+function handleFile(inputId, thumbId, boxId){
+  const input = document.getElementById(inputId);
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if(!file) return;
+    document.getElementById(boxId).classList.add('has-file');
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 1000;
+        const scale = Math.min(1, maxW / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        input.dataset.b64 = dataUrl.split(',')[1];
+        const thumb = document.getElementById(thumbId);
+        thumb.src = dataUrl;
+        thumb.style.display = 'block';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+handleFile('g1file','g1thumb','g1uploadBox');
+handleFile('g2file','g2thumb','g2uploadBox');
+
+/* ====== SUBMIT ====== */
+document.getElementById('checkinForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const errBox = document.getElementById('errorBox');
+  errBox.style.display = 'none';
+
+  const g1file = document.getElementById('g1file');
+  if(!g1file.dataset.b64){
+    errBox.textContent = 'Por favor, envie a foto do documento do hóspede 1. / Please upload guest 1\'s ID photo.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  const guest2Active = document.getElementById('guest2Section').style.display === 'block';
+
+  if(guest2Active){
+    const g2file = document.getElementById('g2file');
+    if(!g2file.dataset.b64){
+      errBox.textContent = 'Por favor, envie a foto do documento do hóspede 2. / Please upload guest 2\'s ID photo.';
+      errBox.style.display = 'block';
+      return;
+    }
+  }
+
+  if(!document.getElementById('consent').checked){
+    errBox.textContent = 'Por favor, confirme a concordância abaixo para continuar. / Please confirm the agreement below to continue.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  const payload = {
+    apartment: theme.name.replace('LOGCENTRO','LogCentro'),
+    checkin: checkin,
+    checkout: checkout,
+    consentGiven: true,
+    consentTimestamp: new Date().toISOString(),
+    guest1: {
+      name: document.getElementById('g1name').value,
+      doc: document.getElementById('g1doc').value,
+      photoBase64: g1file.dataset.b64,
+      photoType: g1file.files[0]?.type || 'image/jpeg'
+    },
+    guest2: guest2Active ? {
+      name: document.getElementById('g2name').value,
+      doc: document.getElementById('g2doc').value,
+      photoBase64: document.getElementById('g2file').dataset.b64 || "",
+      photoType: document.getElementById('g2file').files[0]?.type || 'image/jpeg'
+    } : null
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    await fetch(BACKEND_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    document.getElementById('formArea').style.display = 'none';
+    document.getElementById('successBlock').style.display = 'block';
+  } catch (err) {
+    errBox.textContent = 'Houve um problema ao enviar. Tente novamente. / There was a problem sending this. Please try again.';
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Enviar';
+  }
+});
+</script>
+</body>
+</html>
