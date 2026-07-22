@@ -110,6 +110,31 @@
     display:none; font-size:14px; font-weight:500; color:#fff; text-align:center;
     background:rgba(0,0,0,0.35); border-radius:8px; padding:12px; margin-top:12px; line-height:1.5;
   }
+
+  .park-choice-row{ display:flex; gap:12px; margin-top:8px; }
+  .park-choice{
+    flex:1; padding:20px 14px; border-radius:14px; cursor:pointer;
+    background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.3);
+    color:#fff; font-family:'Poppins',sans-serif; font-size:15px; font-weight:600;
+    text-align:center; line-height:1.4; transition:all .2s;
+  }
+  .park-choice .en{ display:block; font-size:12px; font-weight:400; opacity:0.8; margin-top:5px; }
+  .park-choice.selected{ background:rgba(255,255,255,0.95); color:#4A4436; border-color:#fff; }
+  .park-choice.selected .en{ opacity:0.65; }
+
+  .park-total{
+    text-align:center; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+    border-radius:12px; padding:16px; font-size:16px; font-weight:600; margin-bottom:24px;
+  }
+
+  .pix-box{
+    margin-top:24px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2);
+    border-radius:14px; padding:18px; text-align:center;
+  }
+  .pix-label{ font-size:13px; font-weight:500; opacity:0.9; margin-bottom:4px; }
+  .pix-label .en{ display:block; font-size:12px; opacity:0.7; margin-top:3px; margin-bottom:10px; }
+  .pix-key{ font-size:17px; font-weight:700; letter-spacing:1px; margin:10px 0 14px; }
+  .btn.pix-copy{ background:var(--gold); color:#3E3420; margin-top:0; }
   .field-error.show{ display:block; }
 
   .upload{
@@ -219,6 +244,7 @@
     <div class="dot" data-step="0"></div>
     <div class="dot" data-step="1"></div>
     <div class="dot" data-step="2"></div>
+    <div class="dot" data-step="3"></div>
   </div>
 
   <div id="formArea">
@@ -309,8 +335,62 @@
       </div>
     </div>
 
-    <!-- STEP 2 — terms & consent -->
+    <!-- STEP 2 — parking upsell -->
     <div class="step" data-step="2">
+      <div class="section-head" style="font-size:32px">Estacionamento</div>
+      <div class="section-sub">
+        Vaga particular a poucos passos do prédio, reservada antes da sua chegada.
+        <span class="en">Private parking steps from the building, reserved ahead of your arrival.</span>
+      </div>
+
+      <div class="park-choice-row">
+        <button type="button" class="park-choice" id="parkYesBtn" onclick="chooseParking(true)">
+          Sim, quero reservar<span class="en">Yes, reserve it</span>
+        </button>
+        <button type="button" class="park-choice" id="parkNoBtn" onclick="chooseParking(false)">
+          Não, obrigado<span class="en">No, thank you</span>
+        </button>
+      </div>
+
+      <div id="parkingDetails" style="display:none; margin-top:28px">
+        <div class="park-total" id="parkTotal"></div>
+
+        <div class="field">
+          <label>Marca e modelo do carro<span class="en">Car make and model</span></label>
+          <input type="text" id="carModel" placeholder="Ex: Fiat Argo">
+        </div>
+        <div class="field">
+          <label>Cor<span class="en">Colour</span></label>
+          <input type="text" id="carColor">
+        </div>
+        <div class="field">
+          <label>Placa<span class="en">Licence plate</span></label>
+          <input type="text" id="carPlate">
+        </div>
+
+        <div class="pix-box">
+          <div class="pix-label">Pagamento antecipado via PIX (opcional)<span class="en">Optional advance payment via PIX</span></div>
+          <div class="pix-key" id="pixKey">75674831149</div>
+          <button type="button" class="btn pix-copy" onclick="copyPix()">Copiar chave PIX</button>
+        </div>
+      </div>
+
+      <div id="parkingDeclined" style="display:none; margin-top:20px">
+        <div class="section-sub" style="margin-bottom:0">
+          Sem problema — se mudar de ideia, é só nos avisar.
+          <span class="en">No problem — just let us know if you change your mind.</span>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox2"></div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-back" onclick="goToStep(1)">Voltar</button>
+        <button type="button" class="btn btn-primary" onclick="validateStep2()">Continuar</button>
+      </div>
+    </div>
+
+    <!-- STEP 3 — terms & consent -->
+    <div class="step" data-step="3">
       <div class="section-head" style="font-size:32px">Quase lá</div>
       <div class="section-sub">Só falta confirmar os termos da hospedagem<span class="en">Just confirm the rental terms to finish</span></div>
 
@@ -326,9 +406,9 @@
         </label>
       </div>
 
-      <div class="error-box" id="errorBox2"></div>
+      <div class="error-box" id="errorBox3"></div>
       <div class="btn-row">
-        <button type="button" class="btn btn-back" onclick="goToStep(1)">Voltar</button>
+        <button type="button" class="btn btn-back" onclick="goToStep(2)">Voltar</button>
         <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()">Enviar</button>
       </div>
     </div>
@@ -767,9 +847,76 @@ function validateStep1(){
 function openTerms(){ document.getElementById('termsModal').classList.add('open'); }
 function closeTerms(){ document.getElementById('termsModal').classList.remove('open'); }
 
+/* ====== PARKING UPSELL ====== */
+let parkingChoice = null;
+
+function nightsBetween(){
+  const inDate = calendarStates['checkin'].selected;
+  const outDate = calendarStates['checkout'].selected;
+  if(!inDate || !outDate) return 0;
+  const diff = Math.round((outDate - inDate) / 86400000);
+  return diff > 0 ? diff : 0;
+}
+
+function chooseParking(wantsIt){
+  parkingChoice = wantsIt;
+  document.getElementById('parkYesBtn').classList.toggle('selected', wantsIt);
+  document.getElementById('parkNoBtn').classList.toggle('selected', !wantsIt);
+  document.getElementById('parkingDetails').style.display = wantsIt ? 'block' : 'none';
+  document.getElementById('parkingDeclined').style.display = wantsIt ? 'none' : 'block';
+  document.getElementById('errorBox2').style.display = 'none';
+
+  if(wantsIt){
+    const nights = nightsBetween();
+    const total = nights * 40;
+    const totalEl = document.getElementById('parkTotal');
+    if(nights > 0){
+      totalEl.textContent = nights + (nights === 1 ? ' noite' : ' noites') + ' × R$40 = R$' + total;
+    } else {
+      totalEl.textContent = 'R$40 por noite';
+    }
+  }
+}
+
+function copyPix(){
+  const key = document.getElementById('pixKey').textContent;
+  navigator.clipboard.writeText(key).then(() => {
+    const btn = document.querySelector('.pix-copy');
+    const original = btn.textContent;
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = original; }, 1800);
+  }).catch(() => {
+    alert('Chave PIX: ' + key);
+  });
+}
+
+function validateStep2(){
+  const errBox = document.getElementById('errorBox2');
+  errBox.style.display = 'none';
+
+  if(parkingChoice === null){
+    errBox.textContent = 'Por favor, escolha uma opção acima. / Please choose an option above.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  if(parkingChoice === true){
+    const model = document.getElementById('carModel').value.trim();
+    const color = document.getElementById('carColor').value.trim();
+    const plate = document.getElementById('carPlate').value.trim();
+    if(!model || !color || !plate){
+      errBox.textContent = 'Por favor, preencha os dados do carro para reservar a vaga. / Please fill in your car details to reserve the spot.';
+      errBox.style.display = 'block';
+      return;
+    }
+  }
+
+  goToStep(3);
+}
+
 /* ====== SUBMIT ====== */
 async function submitForm(){
-  const errBox = document.getElementById('errorBox2');
+  const errBox = document.getElementById('errorBox3');
   const btn = document.getElementById('submitBtn');
   errBox.style.display = 'none';
 
@@ -782,6 +929,7 @@ async function submitForm(){
   const guest2Active = document.getElementById('guest2Fields').style.display === 'block';
   const g1file = document.getElementById('g1file');
   const g2file = document.getElementById('g2file');
+  const nights = nightsBetween();
 
   const payload = {
     apartment: aptDisplayName,
@@ -789,6 +937,12 @@ async function submitForm(){
     checkout: toISO(calendarStates['checkout'].selected),
     consentGiven: true,
     consentTimestamp: new Date().toISOString(),
+    parkingRequested: parkingChoice === true,
+    parkingCarModel: parkingChoice === true ? document.getElementById('carModel').value.trim() : "",
+    parkingCarColor: parkingChoice === true ? document.getElementById('carColor').value.trim() : "",
+    parkingCarPlate: parkingChoice === true ? document.getElementById('carPlate').value.trim() : "",
+    parkingNights: parkingChoice === true ? nights : 0,
+    parkingTotal: parkingChoice === true ? nights * 40 : 0,
     guest1: {
       name: document.getElementById('g1name').value.trim(),
       doc: document.getElementById('g1doc').value.trim(),
