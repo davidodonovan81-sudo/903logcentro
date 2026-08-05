@@ -369,7 +369,7 @@
           <div class="num">903</div>
           <div class="suffix">LogCentro</div>
           <div class="hairline"></div>
-          <div class="listing">Vista Incr&iacute;vel no Centro | Sil&ecirc;ncio, Estilo e Conex&atilde;o R&aacute;pida</div>
+          <div class="listing">Vista Incr&iacute;vel no Centro</div>
           <div class="desc">9&ordm; andar &middot; varanda sobre o Passeio P&uacute;blico</div>
         </button>
 
@@ -534,7 +534,7 @@
 
         <div class="pix-box">
           <div class="pix-label">Pagamento antecipado via PIX (opcional)<span class="en">Optional advance payment via PIX</span></div>
-          <div class="pix-key" id="pixKey">75674831149</div>
+          <div class="pix-key" id="pixKey"></div>
           <button type="button" class="btn pix-copy" onclick="copyPix()">Copiar chave PIX</button>
         </div>
       </div>
@@ -729,10 +729,12 @@ const SEND_NTFY_FROM_FORM = false;
 /* ====== PROPERTY THEMES ====== */
 const THEMES = {
   "903":  { name: "903LOGCENTRO",  display: "903LogCentro",  unit: "903",  floor: "9",
-            listing: "Vista Incrível no Centro | Silêncio, Estilo e Conexão Rápida",
+            listing: "Vista Incrível no Centro",
+            pix: "75674831149",
             grad1: "#868F76", gradMid: "#96895F", grad2: "#A6875C", gold: "#D0B274" },
   "1109": { name: "1109LOGCENTRO", display: "1109LogCentro", unit: "1109", floor: "11",
             listing: "Conforto & Estilo no Centro",
+            pix: "04465469926",
             grad1: "#A65939", gradMid: "#914B35", grad2: "#7D4232", gold: "#E0B98C" }
 };
 
@@ -756,6 +758,7 @@ function chooseApartment(code){
   document.documentElement.style.setProperty('--gold',  theme.gold);
 
   document.getElementById('brandName').textContent = theme.name;
+  document.getElementById('pixKey').textContent = theme.pix;
   document.getElementById('kicker').textContent = 'APARTAMENTO ' + theme.unit + ' \u00b7 SUA CHEGADA';
   document.getElementById('termsBody').innerHTML = TERMS_TEMPLATE.split('{{APT}}').join(aptDisplayName);
 
@@ -1351,6 +1354,7 @@ async function submitForm(){
     apartmentUnit: theme.unit,
     apartmentFloor: theme.floor,
     apartmentListing: theme.listing,
+    pixKey: theme.pix,
     portariaMessage: buildPortariaMessage(d),
     ntfyTopic: NTFY_TOPIC,
     checkin: toISO(calendarStates['checkin'].selected),
