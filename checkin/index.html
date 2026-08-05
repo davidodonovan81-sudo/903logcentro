@@ -1258,6 +1258,7 @@ function buildPortariaMessage(d){
   if(d.parking){
     L.push('Estacionamento reservado (TRI PARK): sim');
     L.push('Veiculo: ' + d.carModel + ' - ' + d.carColor + ' - placa ' + d.carPlate);
+    L.push('Periodo: ' + d.nights + ' noite(s) - R$' + d.total);
   } else {
     L.push('Estacionamento: nao solicitado');
   }
@@ -1287,6 +1288,30 @@ function sendNtfy(d){
     },
     body: body
   }).catch(function(){ /* best effort, never blocks the guest */ });
+}
+
+/* Parking is a booking you have to action with TRI PARK, so it gets its own
+   alert rather than being buried in the general check-in notification. */
+function sendNtfyParking(d){
+  if(!d.parking) return;
+  return fetch(NTFY_URL, {
+    method: 'POST',
+    headers: {
+      'Title': 'Estacionamento APT ' + d.unit + ' - ' + d.carPlate,
+      'Tags': 'car,parking',
+      'Priority': 'high'
+    },
+    body:
+      'RESERVAR VAGA - TRI PARK\n' +
+      'APT ' + d.unit + ' (' + d.name + ')\n\n' +
+      'Veiculo: ' + d.carModel + '\n' +
+      'Cor: ' + d.carColor + '\n' +
+      'Placa: ' + d.carPlate + '\n\n' +
+      'Periodo: ' + d.checkinBR + ' a ' + d.checkoutBR + '\n' +
+      d.nights + (d.nights === 1 ? ' noite' : ' noites') + ' x R$40 = R$' + d.total + '\n' +
+      'Chave PIX enviada: ' + d.pix + '\n\n' +
+      'Hospede: ' + d.g1name + ' (' + d.g1doc + ')'
+  }).catch(function(){});
 }
 
 function sendNtfyFallback(d, detail){
@@ -1346,7 +1371,10 @@ async function submitForm(){
     parking: parking,
     carModel: parking ? document.getElementById('carModel').value.trim() : '',
     carColor: parking ? document.getElementById('carColor').value.trim() : '',
-    carPlate: parking ? document.getElementById('carPlate').value.trim() : ''
+    carPlate: parking ? document.getElementById('carPlate').value.trim() : '',
+    nights: nights,
+    total: parking ? nights * 40 : 0,
+    pix: theme.pix
   };
 
   const payload = {
@@ -1410,6 +1438,7 @@ async function submitForm(){
   if(!sent){
     /* Tell David even when the backend is unreachable, so nothing is lost. */
     sendNtfyFallback(d, failureDetail);
+    sendNtfyParking(d);
     errBox.innerHTML =
       'Não conseguimos enviar agora. Verifique sua conexão e toque em Enviar novamente.' +
       '<span class="en" style="display:block; margin-top:8px; opacity:0.85">' +
@@ -1423,6 +1452,7 @@ async function submitForm(){
   }
 
   sendNtfy(d);
+  sendNtfyParking(d);
 
   const line = document.getElementById('successAptLine');
   if(line){
