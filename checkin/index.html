@@ -7,7 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap" rel="stylesheet">
 <style>
-  :root{ --grad1:#868F76; --grad2:#A6875C; --gold:#D0B274; }
+  :root{ --grad1:#7C8471; --grad2:#9A845E; --gold:#cbab5e; }
+  body, .step, .park-choice, .apt-card, .footer .brand, .kicker{ transition:background .55s ease, border-color .35s ease, color .35s ease; }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{ height:100%; }
   body{
@@ -57,6 +58,34 @@
     opacity:0.96; margin-bottom:32px; line-height:1.55;
   }
   .section-sub .en{ display:block; font-size:14px; opacity:0.85; margin-top:4px; }
+
+  /* ---------- apartment selector ---------- */
+  .apt-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:30px; }
+  .apt-card{
+    position:relative; overflow:hidden; cursor:pointer;
+    background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.28);
+    border-radius:18px; padding:0 0 22px; text-align:center;
+    font-family:'Poppins',sans-serif; color:#fff; -webkit-tap-highlight-color:transparent;
+  }
+  .apt-card:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+  .apt-swatch{ height:8px; width:100%; display:block; }
+  .apt-card .num{ font-size:40px; font-weight:600; letter-spacing:-0.5px; line-height:1; margin:22px 0 2px; color:var(--gold); }
+  .apt-card .suffix{ font-size:11px; font-weight:600; letter-spacing:2.6px; text-transform:uppercase; opacity:0.9; margin-bottom:14px; }
+  .apt-card .desc{ font-size:13px; font-weight:400; line-height:1.5; opacity:0.9; padding:0 14px; }
+  .apt-card .desc .en{ display:block; font-size:11.5px; opacity:0.72; margin-top:4px; }
+  .apt-card .tick{
+    position:absolute; top:16px; right:16px; width:24px; height:24px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,0.55); display:flex; align-items:center;
+    justify-content:center; font-size:13px; color:transparent;
+  }
+  .apt-card.selected{ background:rgba(255,255,255,0.96); border-color:#fff; }
+  .apt-card.selected .num{ color:#4A4436; }
+  .apt-card.selected .suffix{ color:#4A4436; opacity:0.75; }
+  .apt-card.selected .desc{ color:#4A4436; opacity:0.85; }
+  .apt-card.selected .desc .en{ color:#4A4436; opacity:0.6; }
+  .apt-card.selected .tick{ border-color:#4A4436; color:#4A4436; }
+  @media (max-width:400px){ .apt-row{ grid-template-columns:1fr; } .apt-card .num{ font-size:36px; margin-top:18px; } }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
 
   .field{ margin-bottom:26px; }
   label{
@@ -245,12 +274,48 @@
     <div class="dot" data-step="1"></div>
     <div class="dot" data-step="2"></div>
     <div class="dot" data-step="3"></div>
+    <div class="dot" data-step="4"></div>
   </div>
 
   <div id="formArea">
 
-    <!-- STEP 0 — dates -->
+    <!-- STEP 0 — apartment selection -->
     <div class="step" data-step="0">
+      <div class="lead">
+        Em qual apartamento voc&ecirc; vai ficar?
+        <span class="en">Which apartment are you staying in?</span>
+      </div>
+
+      <div class="apt-row">
+        <button type="button" class="apt-card" id="aptCard903" onclick="chooseApartment('903')">
+          <span class="apt-swatch" style="background:linear-gradient(120deg,#868F76,#A6875C)"></span>
+          <span class="tick">&#10003;</span>
+          <div class="num">903</div>
+          <div class="suffix">LogCentro</div>
+          <div class="desc">9&ordm; andar &middot; varanda ampla sobre o Passeio P&uacute;blico
+            <span class="en">9th floor &middot; large balcony over Passeio P&uacute;blico</span>
+          </div>
+        </button>
+
+        <button type="button" class="apt-card" id="aptCard1109" onclick="chooseApartment('1109')">
+          <span class="apt-swatch" style="background:linear-gradient(120deg,#A65939,#7D4232)"></span>
+          <span class="tick">&#10003;</span>
+          <div class="num">1109</div>
+          <div class="suffix">LogCentro</div>
+          <div class="desc">11&ordm; andar &middot; vista alta sobre o Centro
+            <span class="en">11th floor &middot; high view over the city centre</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="error-box" id="errorBoxApt"></div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" onclick="validateApartment()">Continuar</button>
+      </div>
+    </div>
+
+    <!-- STEP 1 — dates -->
+    <div class="step" data-step="1">
       <div class="lead">
         Para agilizar seu check-in, precisamos apenas de alguns dados.
         <span class="en">To make your check-in smooth, we just need a few details.</span>
@@ -276,7 +341,7 @@
     </div>
 
     <!-- STEP 1 — guest details + document upload -->
-    <div class="step" data-step="1">
+    <div class="step" data-step="2">
       <div class="section-head">Hóspede 1</div>
       <div class="section-sub">Dados e documento de identificação<span class="en">Your details and ID document</span></div>
 
@@ -330,13 +395,13 @@
 
       <div class="error-box" id="errorBox1"></div>
       <div class="btn-row">
-        <button type="button" class="btn btn-back" onclick="goToStep(0)">Voltar</button>
+        <button type="button" class="btn btn-back" onclick="goToStep(1)">Voltar</button>
         <button type="button" class="btn btn-primary" onclick="validateStep1()">Continuar</button>
       </div>
     </div>
 
     <!-- STEP 2 — parking upsell -->
-    <div class="step" data-step="2">
+    <div class="step" data-step="3">
       <div class="section-head" style="font-size:32px">Estacionamento</div>
       <div class="section-sub">
         Vaga particular a poucos passos do prédio, reservada antes da sua chegada.
@@ -384,13 +449,13 @@
 
       <div class="error-box" id="errorBox2"></div>
       <div class="btn-row">
-        <button type="button" class="btn btn-back" onclick="goToStep(1)">Voltar</button>
+        <button type="button" class="btn btn-back" onclick="goToStep(2)">Voltar</button>
         <button type="button" class="btn btn-primary" onclick="validateStep2()">Continuar</button>
       </div>
     </div>
 
     <!-- STEP 3 — terms & consent -->
-    <div class="step" data-step="3">
+    <div class="step" data-step="4">
       <div class="section-head" style="font-size:32px">Quase lá</div>
       <div class="section-sub">Só falta confirmar os termos da hospedagem<span class="en">Just confirm the rental terms to finish</span></div>
 
@@ -408,7 +473,7 @@
 
       <div class="error-box" id="errorBox3"></div>
       <div class="btn-row">
-        <button type="button" class="btn btn-back" onclick="goToStep(2)">Voltar</button>
+        <button type="button" class="btn btn-back" onclick="goToStep(3)">Voltar</button>
         <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()">Enviar</button>
       </div>
     </div>
@@ -418,13 +483,14 @@
   <div class="success" id="successBlock">
     <div class="mark">✓</div>
     <div class="section-head" style="margin-bottom:20px">Tudo Pronto</div>
+    <p id="successAptLine" style="font-weight:600; letter-spacing:0.5px; margin-bottom:14px"></p>
     <p>Seus dados foram recebidos com sucesso.</p>
     <p class="en">All set — your details have been received.</p>
   </div>
 
   <div class="rule" style="margin-top:40px"></div>
   <div class="footer">
-    <div class="brand" id="brandName">903LOGCENTRO</div>
+    <div class="brand" id="brandName">LOGCENTRO</div>
     <div class="tag">Basta uma mensagem — cuidamos de tudo</div>
     <div class="place">Centro · Curitiba</div>
   </div>
@@ -552,22 +618,62 @@
 /* ====== CONFIGURATION ====== */
 const BACKEND_URL = "https://script.google.com/macros/s/AKfycbx8MFRMGoynSeWhZ7KOtnihqsYfxmr440fiQzQkHiBUsMaQAZG8YqfHFXu3UdRtYsqkCA/exec";
 
+/* ntfy: ONE topic serves both apartments.
+   Your Apps Script already sends the rich notification (with the document
+   link), so the form's own push is OFF by default to avoid duplicates.
+   Set SEND_NTFY_FROM_FORM to true only if you want a second, backup alert
+   sent straight from the browser. */
+const NTFY_TOPIC = "logcentro-checkin-dm7k2";
+const NTFY_URL   = "https://ntfy.sh/" + NTFY_TOPIC;
+const SEND_NTFY_FROM_FORM = false;
+
 /* ====== PROPERTY THEMES ====== */
 const THEMES = {
-  "903": { name: "903LOGCENTRO", grad1: "#868F76", grad2: "#A6875C" },
-  "1109": { name: "1109LOGCENTRO", grad1: "#A65939", grad2: "#7D4232" }
+  "903":  { name: "903LOGCENTRO",  display: "903LogCentro",  unit: "903",  floor: "9",  grad1: "#868F76", grad2: "#A6875C", gold: "#D0B274" },
+  "1109": { name: "1109LOGCENTRO", display: "1109LogCentro", unit: "1109", floor: "11", grad1: "#A65939", grad2: "#7D4232", gold: "#E0B98C" }
 };
 
 const params = new URLSearchParams(window.location.search);
-const apt = params.get("apt") === "1109" ? "1109" : "903";
-const theme = THEMES[apt];
-const aptDisplayName = theme.name.replace('LOGCENTRO','LogCentro');
 
-document.documentElement.style.setProperty('--grad1', theme.grad1);
-document.documentElement.style.setProperty('--grad2', theme.grad2);
-document.getElementById('brandName').textContent = theme.name;
-document.getElementById('termsBody').innerHTML =
-  document.getElementById('termsBody').innerHTML.split('{{APT}}').join(aptDisplayName);
+let apt = null;
+let theme = null;
+let aptDisplayName = "";
+
+const TERMS_TEMPLATE = document.getElementById('termsBody').innerHTML;
+
+function chooseApartment(code){
+  if(!THEMES[code]) return;
+  apt = code;
+  theme = THEMES[code];
+  aptDisplayName = theme.display;
+
+  document.documentElement.style.setProperty('--grad1', theme.grad1);
+  document.documentElement.style.setProperty('--grad2', theme.grad2);
+  document.documentElement.style.setProperty('--gold',  theme.gold);
+
+  document.getElementById('brandName').textContent = theme.name;
+  document.getElementById('termsBody').innerHTML = TERMS_TEMPLATE.split('{{APT}}').join(aptDisplayName);
+
+  document.getElementById('aptCard903').classList.toggle('selected', code === '903');
+  document.getElementById('aptCard1109').classList.toggle('selected', code === '1109');
+  document.getElementById('errorBoxApt').style.display = 'none';
+}
+
+function validateApartment(){
+  const errBox = document.getElementById('errorBoxApt');
+  if(!apt){
+    errBox.textContent = 'Por favor, selecione o apartamento. / Please select your apartment.';
+    errBox.style.display = 'block';
+    return;
+  }
+  errBox.style.display = 'none';
+  goToStep(1);
+}
+
+/* Old ?apt= links still work: the card is pre-selected, guest can change it. */
+if(params.get("apt") === "903" || params.get("apt") === "1109"){
+  chooseApartment(params.get("apt"));
+}
 
 /* ====== DATE CALENDAR ENGINE ====== */
 const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -720,7 +826,7 @@ function validateStep0(){
       'Check-out date must be on or after the check-in date.');
     return;
   }
-  goToStep(1);
+  goToStep(2);
 }
 
 initDateField('checkin', params.get("in") || "");
@@ -840,7 +946,7 @@ function validateStep1(){
     }
   }
 
-  goToStep(2);
+  goToStep(3);
 }
 
 /* ====== TERMS MODAL ====== */
@@ -911,7 +1017,59 @@ function validateStep2(){
     }
   }
 
-  goToStep(3);
+  goToStep(4);
+}
+
+/* ====== PORTARIA MESSAGE (Portuguese, ready to forward on WhatsApp) ====== */
+function buildPortariaMessage(d){
+  const L = [];
+  L.push('Ola! Aviso de chegada de hospede.');
+  L.push('');
+  L.push('APARTAMENTO ' + d.unit + ' (' + d.name + ')');
+  L.push(d.floor + 'o andar - Rua Treze de Maio 400, Centro');
+  L.push('');
+  L.push('Check-in: ' + d.checkinBR + ' a partir das 15h');
+  L.push('Check-out: ' + d.checkoutBR + ' ate as 11h');
+  L.push('');
+  L.push('Hospede 1: ' + d.g1name);
+  L.push('Documento: ' + d.g1doc);
+  if(d.g2name){
+    L.push('Hospede 2: ' + d.g2name);
+    L.push('Documento: ' + d.g2doc);
+  }
+  L.push('');
+  if(d.parking){
+    L.push('Estacionamento reservado (TRI PARK): sim');
+    L.push('Veiculo: ' + d.carModel + ' - ' + d.carColor + ' - placa ' + d.carPlate);
+  } else {
+    L.push('Estacionamento: nao solicitado');
+  }
+  L.push('');
+  L.push('Documentos de identificacao enviados pelo formulario digital.');
+  L.push('Obrigado! David - ' + d.name);
+  return L.join('\n');
+}
+
+/* ====== NTFY PUSH (one topic, apartment always named) ====== */
+function sendNtfy(d){
+  if(!SEND_NTFY_FROM_FORM) return;
+  const title = 'Check-in ' + d.unit + ' - ' + d.g1name;
+  const body =
+    'APT ' + d.unit + ' (' + d.name + ')\n' +
+    d.checkinBR + ' -> ' + d.checkoutBR + '\n' +
+    'Hospede: ' + d.g1name + ' (' + d.g1doc + ')' +
+    (d.g2name ? '\n+ ' + d.g2name + ' (' + d.g2doc + ')' : '') +
+    '\nEstacionamento: ' + (d.parking ? 'SIM - ' + d.carModel + ' ' + d.carPlate : 'nao');
+
+  return fetch(NTFY_URL, {
+    method: 'POST',
+    headers: {
+      'Title': title,
+      'Tags': d.unit === '903' ? 'house,green_circle' : 'house,orange_circle',
+      'Priority': 'default'
+    },
+    body: body
+  }).catch(function(){ /* best effort, never blocks the guest */ });
 }
 
 /* ====== SUBMIT ====== */
@@ -920,40 +1078,67 @@ async function submitForm(){
   const btn = document.getElementById('submitBtn');
   errBox.style.display = 'none';
 
+  if(!apt){
+    errBox.textContent = 'Por favor, volte ao inicio e selecione o apartamento. / Please go back and select your apartment.';
+    errBox.style.display = 'block';
+    return;
+  }
+
   if(!document.getElementById('consent').checked){
-    errBox.textContent = 'Por favor, confirme a concordância com os termos para continuar. / Please confirm agreement to the terms to continue.';
+    errBox.textContent = 'Por favor, confirme a concordancia com os termos para continuar. / Please confirm agreement to the terms to continue.';
     errBox.style.display = 'block';
     return;
   }
 
   const guest2Active = document.getElementById('guest2Fields').style.display === 'block';
-  const g1file = document.getElementById('g1file');
-  const g2file = document.getElementById('g2file');
+  const file1 = document.getElementById('g1file');
+  const file2 = document.getElementById('g2file');
   const nights = nightsBetween();
+  const parking = parkingChoice === true;
+
+  const d = {
+    unit:  theme.unit,
+    name:  aptDisplayName,
+    floor: theme.floor,
+    checkinBR:  formatDMY(calendarStates['checkin'].selected),
+    checkoutBR: formatDMY(calendarStates['checkout'].selected),
+    g1name: document.getElementById('g1name').value.trim(),
+    g1doc:  document.getElementById('g1doc').value.trim(),
+    g2name: guest2Active ? document.getElementById('g2name').value.trim() : '',
+    g2doc:  guest2Active ? document.getElementById('g2doc').value.trim()  : '',
+    parking: parking,
+    carModel: parking ? document.getElementById('carModel').value.trim() : '',
+    carColor: parking ? document.getElementById('carColor').value.trim() : '',
+    carPlate: parking ? document.getElementById('carPlate').value.trim() : ''
+  };
 
   const payload = {
     apartment: aptDisplayName,
+    apartmentUnit: theme.unit,
+    apartmentFloor: theme.floor,
+    portariaMessage: buildPortariaMessage(d),
+    ntfyTopic: NTFY_TOPIC,
     checkin: toISO(calendarStates['checkin'].selected),
     checkout: toISO(calendarStates['checkout'].selected),
     consentGiven: true,
     consentTimestamp: new Date().toISOString(),
-    parkingRequested: parkingChoice === true,
-    parkingCarModel: parkingChoice === true ? document.getElementById('carModel').value.trim() : "",
-    parkingCarColor: parkingChoice === true ? document.getElementById('carColor').value.trim() : "",
-    parkingCarPlate: parkingChoice === true ? document.getElementById('carPlate').value.trim() : "",
-    parkingNights: parkingChoice === true ? nights : 0,
-    parkingTotal: parkingChoice === true ? nights * 40 : 0,
+    parkingRequested: parking,
+    parkingCarModel: d.carModel,
+    parkingCarColor: d.carColor,
+    parkingCarPlate: d.carPlate,
+    parkingNights: parking ? nights : 0,
+    parkingTotal: parking ? nights * 40 : 0,
     guest1: {
-      name: document.getElementById('g1name').value.trim(),
-      doc: document.getElementById('g1doc').value.trim(),
-      photoBase64: g1file.dataset.b64,
-      photoType: g1file.files[0]?.type || 'image/jpeg'
+      name: d.g1name,
+      doc: d.g1doc,
+      photoBase64: file1.dataset.b64,
+      photoType: (file1.files[0] && file1.files[0].type) || 'image/jpeg'
     },
     guest2: guest2Active ? {
-      name: document.getElementById('g2name').value.trim(),
-      doc: document.getElementById('g2doc').value.trim(),
-      photoBase64: g2file.dataset.b64 || "",
-      photoType: g2file.files[0]?.type || 'image/jpeg'
+      name: d.g2name,
+      doc: d.g2doc,
+      photoBase64: file2.dataset.b64 || "",
+      photoType: (file2.files[0] && file2.files[0].type) || 'image/jpeg'
     } : null
   };
 
@@ -967,6 +1152,9 @@ async function submitForm(){
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
+    sendNtfy(d);
+    document.getElementById('successAptLine').textContent =
+      'Apartamento ' + d.unit + ' \u00b7 ' + d.checkinBR + ' \u2192 ' + d.checkoutBR;
     document.getElementById('formArea').style.display = 'none';
     document.getElementById('progress').style.display = 'none';
     document.getElementById('successBlock').style.display = 'block';
