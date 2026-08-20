@@ -904,9 +904,9 @@ function renderCalendar(fieldId){
   popup.innerHTML =
     '<div class="cal-header">' +
       '<button type="button" class="cal-nav" ' + (atFloor ? 'disabled' : '') +
-        ' onclick="changeMonth(\'' + fieldId + '\',-1)">&#8249;</button>' +
+        ' onclick="event.stopPropagation();changeMonth(\'' + fieldId + '\',-1)">&#8249;</button>' +
       '<div class="cal-month-label">' + MONTHS_PT[state.viewMonth] + ' ' + state.viewYear + '</div>' +
-      '<button type="button" class="cal-nav" onclick="changeMonth(\'' + fieldId + '\',1)">&#8250;</button>' +
+      '<button type="button" class="cal-nav" onclick="event.stopPropagation();changeMonth(\'' + fieldId + '\',1)">&#8250;</button>' +
     '</div>' +
     '<div class="cal-weekdays">' + WEEKDAYS_PT.map(w => '<div>' + w + '</div>').join('') + '</div>' +
     '<div class="cal-days">' + daysHtml + '</div>' +
@@ -992,6 +992,10 @@ function clearFieldError(fieldId){
 }
 
 document.addEventListener('click', (e) => {
+  /* A click on a month arrow re-renders the popup, which detaches the very
+     element that was clicked. Without this guard that looks like an outside
+     click and the popup closes itself. */
+  if(e.target && e.target.isConnected === false) return;
   document.querySelectorAll('.calendar-popup.open').forEach(popup => {
     const fieldId = popup.id.replace('Popup','');
     const input = document.getElementById(fieldId + 'Input');
